@@ -1,0 +1,72 @@
+number = 2
+title = "Learning"
+environment = "forest"
+habit = "Let the AI explain, then explain it back"
+objective = "Understand three ideas the real app depends on: a list of records, rules stored as data, and functions that take input and give output."
+produces = "A tiny script that counts riders per category, and her own explanation of why it works"
+estimated_minutes = 45
+
+[[criteria]]
+id = "data-not-code"
+title = "Rules as data"
+ask = """
+Ask her to explain, in her own words, why the categories should be stored as data (a list or table)
+instead of a chain of if/else, and what would happen with each approach if the organizer adds a
+"Family 10k" category. Submit her explanation.
+"""
+evidence = "text"
+[criteria.check]
+kind = "rubric"
+min_chars = 80
+rubric = """
+She explains that with categories stored as data (a list, table, dict, or file), adding a category is
+adding one entry, while with if/else the logic must be edited (and possibly in several places).
+She connects it to the "Family 10k" example or to a similar new category.
+Pass if both ideas appear in any wording. A metaphor is fine if the point is right.
+"""
+fallback_keywords = [
+  ["list", "table", "data", "dict", "file"],
+  ["if", "else", "condition", "code"],
+  ["add", "new", "family", "change"],
+]
+
+[[criteria]]
+id = "count-script"
+title = "Counting riders per category"
+ask = """
+Help her build `learning/count_categories.py`, which reads `riders_small.csv` (fetch it with
+`get_shared_file` and save it in her project) and prints one line per category, exactly in the format
+`Category: count` (for example `Kids: 3`). Categories come from age on race day, using the rules in
+`event_rules.md`. You may write code in this checkpoint, but keep the categories as data. Run it and
+submit the raw output.
+"""
+evidence = "output"
+[criteria.check]
+kind = "key_values"
+expected = { Kids = "2", Junior = "2", Elite = "3", Master = "2" }
+
+[[criteria]]
+id = "explain-the-script"
+title = "Explaining the script"
+ask = """
+Ask her to walk through the script in her own words, step by step: what happens from opening the file
+to printing the counts. Submit her explanation.
+"""
+evidence = "text"
+[criteria.check]
+kind = "rubric"
+min_chars = 100
+rubric = """
+A step-by-step explanation in plain words that covers: reading the rows of the file; going through
+each rider one at a time (a loop); working out the rider's age on race day; finding which category
+that age falls into using the category list/table; adding one to that category's count; printing the
+totals. Small inaccuracies in vocabulary are fine. Pass if at least five of these six steps are
+recognizably present and in a sensible order.
+"""
+fallback_keywords = [
+  ["read", "open", "load", "file"],
+  ["each", "loop", "every", "for", "one by one"],
+  ["age", "birth"],
+  ["category", "categories"],
+  ["count", "add", "total"],
+]

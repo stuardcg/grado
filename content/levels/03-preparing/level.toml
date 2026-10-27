@@ -1,0 +1,84 @@
+number = 3
+title = "Preparing"
+environment = "forest"
+habit = "Give context: goal, what you have, what you want back"
+objective = "Set up a real project: its own environment, version control, saving and loading data, and a first PDF."
+produces = "A project folder with a virtual environment, git, a saved-and-loaded registration, and `hello.pdf`"
+estimated_minutes = 45
+
+[[criteria]]
+id = "environment"
+title = "Project environment"
+ask = """
+Her project must have its own virtual environment with {{project.pdf_library}} installed. With the
+environment activated, run `python --version` and `pip list`, and submit the raw output of both.
+"""
+evidence = "output"
+[criteria.check]
+kind = "contains_all"
+needles = ["Python 3", "fpdf2"]
+
+[[criteria]]
+id = "git"
+title = "Version control"
+ask = """
+Her project must be a git repository with at least one commit she made (the virtual environment
+ignored). Run `git log --oneline -n 5` and `git status --short` and submit the raw output.
+"""
+evidence = "output"
+[criteria.check]
+kind = "present"
+min_chars = 7
+
+[[criteria]]
+id = "round-trip"
+title = "Save and load one registration"
+ask = """
+Help her write `prepare/round_trip.py`: it takes the first registration in `registrations.csv`
+(fetch with `get_shared_file`), saves it to a JSON file, reads that file back, and prints `name: ...`
+and `email: ...` from what was read back. Run it and submit the raw output.
+"""
+evidence = "output"
+[criteria.check]
+kind = "key_values"
+expected = { name = "Noemí Albornoz", email = "noemi.albornoz@example.com" }
+
+[[criteria]]
+id = "hello-pdf"
+title = "First PDF"
+ask = """
+Help her generate `prepare/hello.pdf` with {{project.pdf_library}}, with the event name as a title.
+Then run `python -c "print(open('prepare/hello.pdf','rb').read(8))"` and submit the raw output.
+"""
+evidence = "output"
+[criteria.check]
+kind = "contains_all"
+needles = ["%PDF"]
+
+[[criteria]]
+id = "context-prompt"
+title = "A prompt with context"
+ask = """
+Ask her to write the prompt she would use to start planning the app (the next checkpoint) with any AI,
+using the four parts: Goal, What I have, What's wrong / constraints, What I want back.
+She writes it; you may only point out a missing part. Submit her prompt.
+"""
+evidence = "text"
+[criteria.check]
+kind = "rubric"
+min_chars = 150
+rubric = """
+A prompt with all four parts, labeled or clearly present:
+- Goal: a plan (not code) for the organizer's registration app.
+- What I have: refers to her investigation notes and/or the event rules, the sample data, the project setup.
+- Constraints: at least one real constraint (desktop app, offline, beginner-friendly, categories as data,
+  the libraries chosen, small steps…).
+- What I want back: a concrete shape for the answer (a plan.md, sections, a numbered list of steps, length).
+Fail if it asks for the app to be built, or if any part is missing. Name the missing part.
+"""
+fallback_keywords = [
+  ["goal"],
+  ["have", "notes", "investigation", "rules"],
+  ["constraint", "must", "should", "offline", "desktop", "beginner"],
+  ["want back", "plan", "steps", "list", "sections"],
+]

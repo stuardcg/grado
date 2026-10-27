@@ -1,0 +1,35 @@
+# Tunable values for every briefing and page. Use them in Markdown as
+# {{section.key}}. Changing a value here changes the coach everywhere.
+
+[player]
+profile = """
+A beginner in Python taking an introductory course, where the AI writes most of the
+code. She has built one small desktop app before (an invoice PDF generator) by asking an
+AI for the whole thing at once. She learns fast by doing, likes seeing things run, and
+loses patience with long explanations, walls of text and anything that feels like a lecture.
+"""
+language = "English"
+
+[style]
+# Upper bound for a normal reply, in lines of prose (code blocks not counted).
+max_reply_lines = 8
+# Longest code block to show at once. Bigger changes go straight into files.
+max_code_lines = 25
+# How many questions to ask her per reply.
+questions_per_reply = 1
+# Offer at most one prompt tip every N of your replies.
+tip_every_n_replies = 4
+
+[project]
+event_name = "Example Valley MTB 2027"
+event_date = "2027-03-14"
+organizer = "Alex"
+app_kind = "desktop app the event organizer uses on their own computer"
+gui_library = "the GUI library from her course (Tkinter if she is unsure)"
+pdf_library = "fpdf2"
+python_version = "3.11 or newer"
+
+[site]
+# Where she redeems stamps. Shown in briefings and pages.
+url = "http://localhost:8787"
+mcp_server_name = "grado"

@@ -1,0 +1,62 @@
+number = 5
+title = "Prototype"
+environment = "canyon"
+habit = "One small step at a time, run after each"
+objective = "Build the first working version, following her plan step by step: rules, the summary, the window, the start list PDF."
+produces = "An ugly but working app: loads the sample export, shows riders by category, prints a start list"
+estimated_minutes = 120
+
+[[criteria]]
+id = "summary"
+title = "Summary of the sample export"
+ask = """
+Her app must load `registrations.csv` (the full sample from `get_shared_file`) applying the event rules,
+and be able to print a summary from the command line, without opening the window (for example
+`python -m app.summary registrations.csv`, or a small script). The summary must print exactly these
+lines, in any order: one `Category: count` line per category, plus `Rejected: count` and
+`Duplicates: count`. Run it and submit the raw output.
+"""
+evidence = "output"
+[criteria.check]
+kind = "key_values"
+expected = { Kids = "5", Junior = "5", Elite = "13", Master = "7", Rejected = "7", Duplicates = "2" }
+
+[[criteria]]
+id = "start-list"
+title = "Start list PDF"
+ask = """
+Her app must generate a start list PDF for the sample export, grouped by category, with each rider's name
+and emergency contact. After generating it, the app (or a helper script) must print
+`Riders listed: N`, where N is the number of riders written into the PDF. Run it, then run
+`python -c "print(open('<path to the pdf>','rb').read(8))"`, and submit both raw outputs together.
+"""
+evidence = "output"
+[criteria.check]
+kind = "all"
+checks = [
+  { kind = "contains_all", needles = ["%PDF"] },
+  { kind = "key_values", expected = { "Riders listed" = "30" } },
+]
+
+[[criteria]]
+id = "window"
+title = "The window works"
+ask = """
+Ask her to use the app's window for a couple of minutes: load the sample, look at the list, print the start
+list. Then ask her to describe in two or three sentences what she can do in it, and one thing that is ugly
+or awkward. Submit her words.
+"""
+evidence = "text"
+[criteria.check]
+kind = "rubric"
+min_chars = 80
+rubric = """
+She describes using a window (not just scripts): at least two things she can do in it, such as loading or
+importing the registrations, seeing them listed or counted by category, adding one by hand, printing the
+start list. She also names one thing that is ugly, awkward, or missing. Pass if both are present.
+"""
+fallback_keywords = [
+  ["window", "button", "screen", "click", "list", "table"],
+  ["load", "import", "see", "print", "add"],
+  ["ugly", "awkward", "missing", "weird", "slow", "confus", "but"],
+]

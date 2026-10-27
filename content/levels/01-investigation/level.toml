@@ -1,0 +1,86 @@
+number = 1
+title = "Investigation"
+environment = "meadow"
+habit = "Ask questions before asking for code"
+objective = "Understand who will use the app, what a registration contains, and what can go wrong, by interviewing the organizer."
+produces = "`notes/investigation.md`: users and moments, the fields of a registration, and a list of things that can go wrong"
+estimated_minutes = 45
+
+[[criteria]]
+id = "users-and-moments"
+title = "Who uses the app, and when"
+ask = """
+Submit the section of her `notes/investigation.md` that says who uses the app and at which moments
+(for example before the event, on race day). Her words, as written in the file.
+"""
+evidence = "text"
+[criteria.check]
+kind = "rubric"
+min_chars = 80
+rubric = """
+The notes must identify the organizer (or her staff/volunteers) as the person using the desktop app.
+Riders do not use it; if the notes say riders use this app directly, fail and say the user is unclear.
+They must describe at least two distinct moments of use, such as: loading registrations from the club's
+spreadsheet export before the event, typing late registrations by hand, checking category counts for
+planning, printing the start list on race day.
+Pass if both conditions hold, in any wording.
+"""
+fallback_keywords = [
+  ["organizer", "organiser", "alex", "staff", "volunteer"],
+  ["race day", "event day", "on the day", "start list", "print"],
+  ["before", "spreadsheet", "csv", "export", "import", "load", "hand", "late"],
+]
+
+[[criteria]]
+id = "registration-fields"
+title = "What a registration contains"
+ask = """
+Submit the part of her notes listing the fields of one registration and which ones are required.
+"""
+evidence = "text"
+[criteria.check]
+kind = "rubric"
+min_chars = 60
+rubric = """
+The list must include: full name, email, birth date (or age), and emergency contact, and must
+distinguish required from optional fields in some way (labels, a column, two lists).
+It must show she understands that the category comes from the birth date (age on race day) rather
+than being a field the rider picks, or at least list category as derived/calculated.
+Extra fields (phone, t-shirt size, registration ID) are welcome but not required.
+Pass if name, email, birth date/age and emergency contact are present, required vs optional is
+distinguished, and category is not presented as a free choice. If only the category point is missing,
+fail and say the category origin is unclear.
+"""
+fallback_keywords = [
+  ["name"],
+  ["email", "e-mail", "mail"],
+  ["birth", "age"],
+  ["emergency"],
+  ["required", "optional", "mandatory", "must"],
+]
+
+[[criteria]]
+id = "what-can-go-wrong"
+title = "What can go wrong"
+ask = """
+Submit her list of things that can go wrong with registrations, from her notes.
+"""
+evidence = "text"
+[criteria.check]
+kind = "rubric"
+min_chars = 80
+rubric = """
+At least five distinct, realistic problems. The list must include:
+- duplicate registrations (the same rider twice),
+- at least one data problem (bad or missing email, impossible or missing birth date, missing emergency
+  contact, empty name),
+- at least one category problem (age right on a boundary, rider too young, age computed on the wrong
+  date, a category getting too full).
+Generic items like "bugs" or "the app crashes" do not count toward the five.
+Pass if all three kinds are present and there are at least five distinct items.
+"""
+fallback_keywords = [
+  ["duplicate", "twice", "same rider", "same email", "repeated"],
+  ["email", "birth", "date", "missing", "empty", "emergency", "invalid"],
+  ["category", "age", "boundary", "too young", "full", "capacity"],
+]

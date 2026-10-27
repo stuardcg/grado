@@ -1,0 +1,58 @@
+number = 6
+title = "Safety net"
+environment = "ridge"
+habit = "Define \"done\" with examples"
+objective = "Write tests that pin down the event rules, so the next changes can't silently break them."
+produces = "A `tests/` folder with pytest tests for ages, categories, validation, duplicates and the sample summary"
+estimated_minutes = 60
+
+[[criteria]]
+id = "tests-pass"
+title = "Tests pass"
+ask = """
+Her project must have pytest tests for the event rules. Install pytest in her virtual environment if
+needed, run `pytest -v` from the project root, and submit the full raw output including the summary line.
+"""
+evidence = "output"
+[criteria.check]
+kind = "pytest"
+min_passed = 6
+
+[[criteria]]
+id = "what-tests-protect"
+title = "What the tests protect"
+ask = """
+Run `pytest --collect-only -q` and ask her to add, below it, one line per group of tests saying what that
+group protects, in her words. Submit the output plus her lines together.
+"""
+evidence = "text"
+[criteria.check]
+kind = "rubric"
+min_chars = 150
+rubric = """
+The collected test names plus her explanations must show tests covering:
+- category boundaries (an age exactly at a limit: 8, 12/13, 17/18, 39/40), including a birthday on race day;
+- duplicates (same email with different case or spaces);
+- at least one rejected-row case (invalid email, impossible date, missing emergency contact, too young);
+- the summary counts on the sample file, or an equivalent end-to-end check.
+Her lines must be in plain words and say what each group protects.
+Pass if boundaries, duplicates and rejected rows are covered and she explained them. The summary test is a
+plus; if it is the only thing missing, still pass.
+"""
+fallback_keywords = [
+  ["boundary", "18", "40", "13", "birthday", "edge", "limit"],
+  ["duplicate", "same email"],
+  ["reject", "invalid", "missing", "too young", "bad"],
+]
+
+[[criteria]]
+id = "broken-on-purpose"
+title = "Break it on purpose"
+ask = """
+Ask her to break one rule on purpose (for example change Elite's minimum age to 19), run `pytest`, and
+submit the raw output showing the failure. Then she undoes the change and confirms tests pass again.
+"""
+evidence = "output"
+[criteria.check]
+kind = "contains_all"
+needles = ["failed"]

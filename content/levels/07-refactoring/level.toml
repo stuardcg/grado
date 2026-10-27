@@ -1,0 +1,81 @@
+number = 7
+title = "Refactoring"
+environment = "ridge"
+habit = "Limit the AI: \"don't change behavior\""
+objective = "Reorganize the prototype so rules, storage, PDF and screens live apart, without changing what the app does."
+produces = "The same app, organized: separate modules, categories in one place, tests still green"
+estimated_minutes = 90
+
+[[criteria]]
+id = "same-summary"
+title = "Same behavior"
+ask = """
+After the reorganization, run the same summary command as in the prototype checkpoint on the full
+`registrations.csv` and submit the raw output.
+"""
+evidence = "output"
+[criteria.check]
+kind = "key_values"
+expected = { Kids = "5", Junior = "5", Elite = "13", Master = "7", Rejected = "7", Duplicates = "2" }
+
+[[criteria]]
+id = "tests-still-pass"
+title = "Tests still pass"
+ask = """
+Run `pytest -v` from the project root and submit the full raw output.
+"""
+evidence = "output"
+[criteria.check]
+kind = "pytest"
+min_passed = 6
+
+[[criteria]]
+id = "structure"
+title = "Organized code"
+ask = """
+Run a listing of her Python source files with line counts, excluding the virtual environment, `speedrun/`
+and `learning/` (for example `find . -name "*.py" -not -path "./.venv/*" -not -path "./speedrun/*"
+-not -path "./learning/*" | xargs wc -l`), and ask her to add one line per file saying what it is
+responsible for. Submit both together.
+"""
+evidence = "text"
+[criteria.check]
+kind = "rubric"
+min_chars = 120
+rubric = """
+The listing plus her one-line descriptions must show separate modules for at least three of these
+responsibilities: rules/model (ages, categories, validation, duplicates), storage/import (reading the CSV,
+saving and loading), PDF generation, and the window/UI. Tests are separate. No single source file over
+roughly 300 lines. Her descriptions must match the file names plausibly.
+Pass if at least three responsibilities are in separate files and no file is oversized.
+"""
+fallback_keywords = [
+  ["rule", "model", "category", "valid"],
+  ["storage", "import", "load", "save", "csv"],
+  ["pdf", "print", "start list"],
+  ["ui", "window", "screen", "gui"],
+]
+
+[[criteria]]
+id = "one-place-change"
+title = "Categories in one place"
+ask = """
+Ask her to show where the categories are defined (paste that snippet) and explain, in her words, exactly
+what she would change to add a "Family 10k" category for ages 8 and up, 10 km. She does not need to add
+it. Submit the snippet and her explanation.
+"""
+evidence = "text"
+[criteria.check]
+kind = "rubric"
+min_chars = 80
+rubric = """
+The snippet shows categories defined once, as data (list, dict, table, or a file). Her explanation says
+adding a category means adding one entry there (perhaps plus a test), with no other code changes for the
+category itself. If she notices the overlap with Kids (both cover age 8–12) and how the rule should choose
+between them, that's a plus but not required.
+Fail if categories are defined in more than one place or as if/else logic.
+"""
+fallback_keywords = [
+  ["category", "categories", "categor"],
+  ["add", "one line", "one entry", "new entry", "only"],
+]

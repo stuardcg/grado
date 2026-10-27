@@ -1,0 +1,20 @@
+[package]
+name = "grado-domain"
+description = "Content catalog, level rules and evidence checks. No I/O beyond reading the content directory."
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+hex.workspace = true
+rand.workspace = true
+regex.workspace = true
+serde.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+toml.workspace = true
+walkdir.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true

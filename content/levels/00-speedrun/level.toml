@@ -1,0 +1,46 @@
+number = 0
+title = "Speedrun"
+environment = "meadow"
+habit = "Notice what one big prompt gives you"
+objective = "Ask the AI for the whole registration app in one prompt, try it, and keep it exactly as it comes out."
+produces = "A `speedrun/` folder with the one-prompt app, and three honest first impressions"
+estimated_minutes = 30
+
+[[criteria]]
+id = "speedrun-saved"
+title = "The speedrun app is saved"
+ask = """
+The speedrun app must live in its own `speedrun/` folder in her project, untouched after it was
+generated (running it is fine, fixing it is not). Run `ls -R speedrun` in her project (or `dir /s speedrun`
+on Windows) and submit the raw output.
+"""
+evidence = "output"
+[criteria.check]
+kind = "contains_all"
+needles = [".py"]
+
+[[criteria]]
+id = "first-impressions"
+title = "First impressions"
+ask = """
+After she has tried the app for a few minutes, ask her three short questions, one at a time:
+what worked, what felt off or confusing, and one change she would not know how to make.
+Submit her three answers in her own words.
+"""
+evidence = "text"
+[criteria.check]
+kind = "rubric"
+min_chars = 60
+rubric = """
+Three first impressions from someone who just tried a generated app:
+1. Something that worked or that she liked.
+2. Something that felt wrong, confusing, broken, or missing.
+3. A change she would not know how to make (or would be afraid to make).
+Be generous with wording and length. Fail only if one of the three is missing, or the answers are
+empty or generic ("it's fine", "ok") with no sign she used the app.
+"""
+fallback_keywords = [
+  ["work", "good", "nice", "like", "fine", "easy"],
+  ["off", "wrong", "confus", "weird", "bad", "broke", "missing", "ugly", "strange"],
+  ["change", "modify", "add", "know how", "not sure", "afraid", "wouldn't"],
+]

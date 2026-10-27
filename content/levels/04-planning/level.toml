@@ -1,0 +1,102 @@
+number = 4
+title = "Planning"
+environment = "canyon"
+habit = "Make the AI plan before it codes"
+objective = "Turn the investigation into a plan: the data, the screens, and small steps to build them, reviewed and changed by her."
+produces = "`plan.md`: data model, screens and flows, and a numbered list of small steps"
+estimated_minutes = 60
+
+[[criteria]]
+id = "data-model"
+title = "Data model"
+ask = """
+Submit the data model section of her `plan.md`, as written in the file.
+"""
+evidence = "text"
+[criteria.check]
+kind = "rubric"
+min_chars = 120
+rubric = """
+The data model must describe:
+- a registration/rider with its fields (at least name, email, birth date, emergency contact);
+- categories as data: each with a name and an age range (distance and an optional capacity are a plus),
+  stored in a list/table/file, not as if/else;
+- registrations as a collection (list/table) of any length;
+- where data is saved between sessions (CSV, JSON or SQLite file are all fine).
+Pass if all four are present. If categories are described as fixed logic, fail and say so.
+"""
+fallback_keywords = [
+  ["registration", "rider"],
+  ["category", "categories"],
+  ["list", "table", "collection"],
+  ["save", "file", "json", "csv", "sqlite", "store"],
+]
+
+[[criteria]]
+id = "screens-and-flows"
+title = "Screens and flows"
+ask = """
+Submit the screens/flows section of her `plan.md`.
+"""
+evidence = "text"
+[criteria.check]
+kind = "rubric"
+min_chars = 120
+rubric = """
+Describes what the organizer does in the app, covering at least:
+- seeing the registrations (a list/table, ideally with category counts);
+- adding registrations: importing the spreadsheet export and/or typing one by hand, with validation
+  feedback when data is bad;
+- printing the start list PDF grouped by category.
+Each should say briefly what the organizer sees or does. Pass if all three are present.
+"""
+fallback_keywords = [
+  ["list", "table", "see", "view", "overview"],
+  ["import", "add", "load", "type", "form"],
+  ["pdf", "print", "start list"],
+]
+
+[[criteria]]
+id = "steps"
+title = "Small steps"
+ask = """
+Submit the build steps section of her `plan.md`.
+"""
+evidence = "text"
+[criteria.check]
+kind = "rubric"
+min_chars = 150
+rubric = """
+A numbered list of at least five build steps where:
+- each step is small and ends in something she can run or see;
+- the rules (age, category, validation, duplicates) come before the screens;
+- loading the sample file and checking the summary counts appears early;
+- no single step is "build the app" or "build the UI" as a whole.
+Pass if all four hold.
+"""
+fallback_keywords = [
+  ["1", "2", "3", "4", "5"],
+  ["category", "age", "rule", "valid"],
+  ["sample", "csv", "load", "import", "summary"],
+]
+
+[[criteria]]
+id = "her-review"
+title = "Her review of the plan"
+ask = """
+Ask her what she changed, removed, or questioned in the AI's first draft of the plan, and why.
+Submit her answer in her own words.
+"""
+evidence = "text"
+[criteria.check]
+kind = "rubric"
+min_chars = 60
+rubric = """
+At least one concrete change, removal, or challenge she made to the draft, with a reason in her own
+words (e.g. "removed login, Alex is the only user", "split step 3 in two, it was too big", "asked why
+SQLite instead of CSV and kept CSV because…"). Fail if she says she changed nothing, or gives no reason.
+"""
+fallback_keywords = [
+  ["changed", "removed", "added", "split", "asked", "questioned", "moved", "kept"],
+  ["because", "since", "so that", "reason", "why"],
+]

@@ -1,0 +1,81 @@
+number = 8
+title = "Finish line"
+environment = "peak"
+habit = "Reuse your plan as context"
+objective = "Handle the organizer's change request in your app and in the speedrun app, and compare."
+produces = "Elite capacity with a waitlist, in the real app (tested) and attempted in the speedrun app, plus her comparison"
+estimated_minutes = 90
+
+[[criteria]]
+id = "plan-update"
+title = "Plan the change first"
+ask = """
+Before any code changes, ask her to add a short "Change request: Elite capacity" section to `plan.md`:
+which files change, which tests to add, and the steps. She writes it, using the plan and handoff as
+context; you may point out gaps. Submit that section.
+"""
+evidence = "text"
+[criteria.check]
+kind = "rubric"
+min_chars = 120
+rubric = """
+A short plan for the Elite capacity change that names: where the capacity lives (with the category data);
+which files change (rules and the summary at least; the PDF for the waitlist); at least two new tests
+(e.g. 9th Elite rider goes to the waitlist; waitlist keeps registration order; other categories
+unaffected); and a few small steps. Pass if capacity-as-data, affected files, and at least two tests are
+present.
+"""
+fallback_keywords = [
+  ["capacity", "limit", "cap", "8"],
+  ["waitlist", "waiting list", "wait list"],
+  ["test"],
+  ["rules", "summary", "pdf", "file"],
+]
+
+[[criteria]]
+id = "capacity-summary"
+title = "Elite is capped"
+ask = """
+Run the summary on the full `registrations.csv` after the change. It must now also print
+`Elite waitlist: count`. Submit the raw output.
+"""
+evidence = "output"
+[criteria.check]
+kind = "key_values"
+expected = { Kids = "5", Junior = "5", Elite = "8", Master = "7", Rejected = "7", Duplicates = "2", "Elite waitlist" = "5" }
+
+[[criteria]]
+id = "tests-green"
+title = "Tests cover the change"
+ask = """
+Run `pytest -v` and submit the full raw output.
+"""
+evidence = "output"
+[criteria.check]
+kind = "pytest"
+min_passed = 8
+
+[[criteria]]
+id = "comparison"
+title = "The comparison"
+ask = """
+Ask her to try the same change in the speedrun app (time-box it to 20 minutes; it's fine if she can't
+finish). Then ask her to compare the two experiences in her own words: what was easier, what was harder,
+and what she'd do differently on her next project. Submit her words.
+"""
+evidence = "text"
+[criteria.check]
+kind = "rubric"
+min_chars = 150
+rubric = """
+A personal comparison between making the change in the step-by-step app and in the speedrun app. It must
+mention at least one concrete difference she experienced (finding where categories live, knowing what
+to change, tests catching mistakes, the AI changing unrelated things, time taken…), and at least one thing
+she'll do differently on a next project. Honest negatives are welcome (e.g. "the speedrun was faster to
+start"). Fail only if it's generic, doesn't reference her actual experience, or lacks the "next time" part.
+"""
+fallback_keywords = [
+  ["speedrun", "first app", "one prompt"],
+  ["easier", "harder", "faster", "slower", "difficult", "simple"],
+  ["next time", "next project", "differently", "would", "will"],
+]
