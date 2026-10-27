@@ -9,6 +9,8 @@ outcome.
 | [0001](0001-record-decisions.md) | Record decisions in the repo | Accepted |
 | [0002](0002-rust.md) | Write the backend in Rust | Accepted |
 | [0003](0003-hosting.md) | Host on AWS Lambda behind a Function URL | Accepted |
+| [0004](0004-architecture.md) | Hexagon with one module per use case | Accepted |
+| [0005](0005-conventional-commits.md) | Conventional Commits | Accepted |
 
 ## Template
 
