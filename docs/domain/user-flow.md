@@ -1,7 +1,8 @@
 # User flow
 
-Draft for review (STU-26). It records the flow, its edge cases and the decisions made so far.
-Implementation choices (IDs, storage, formats) are left out on purpose.
+The flow, its edge cases and the decisions behind it, recorded in
+[ADR 0006](../decisions/0006-domain-model.md). Implementation choices (IDs, storage, formats) are
+left out on purpose.
 
 The product: a game to build apps with AI by following recommended steps, with a game-like design,
 connected to the player's LLM through MCP.
@@ -20,7 +21,7 @@ connected to the player's LLM through MCP.
 | Agent connection | How the player's LLM client reaches the game through MCP, acting for one player. |
 | Briefing | What an agent receives when it connects: project, current step, preview of the next step, previous handoff note. |
 | Report | The agent's result for a step: pass or fail for each criterion. No evidence. |
-| Handoff note | A short summary the agent writes when a step is approved, shown in the next briefing. |
+| Handoff note | A short summary the agent sends with an all-pass report; required for approval. Shown in the next briefing. |
 | Stamp | A one-time code issued when a step is approved. When the stamp is on, entering it completes the step. |
 
 Step states: `locked`, `open`, `approved` (every criterion passed, waiting for the stamp),
@@ -34,11 +35,11 @@ Step states: `locked`, `open`, `approved` (every criterion passed, waiting for t
 | M2 | They pick a project from the predefined list. They can have several in progress. | App |
 | M3 | They open the current step and read its guide. | App |
 | M4 | First time only: they create an agent connection and add the MCP server to their client. | App, client |
-| M5 | They open an agent. When it connects, it gets the briefing. The codebase is the rest of its context. | MCP |
+| M5 | They open an agent. It lists the person's projects and picks the one it's working on; if it can't tell from its location, codebase or context, it asks. Then it gets the briefing. The codebase is the rest of its context. | MCP |
 | M6 | The person and the agent build the step. | Client |
 | M7 | When the work is done, the agent requests the criteria. The response suggests spawning a fresh review agent if the client can. | MCP |
 | M8 | The agent checks the codebase against the criteria and sends a report. | MCP |
-| M9 | All passed: the step is approved, the agent writes the handoff note, and a stamp is available from the MCP and the API. | MCP, API |
+| M9 | All passed and a handoff note is sent: the step is approved, and a stamp is available from the MCP and the API. | MCP, API |
 | M10 | Stamp on: the person enters the stamp and the step is done. Stamp off: the step is done at approval. | App |
 | M11 | The next step opens. The MCP response suggests a fresh agent for it, or continuing here if the person wants. | MCP |
 
@@ -52,7 +53,7 @@ reports again.
 | # | Feature | Decision |
 |---|---|---|
 | O1 | Stamp | Toggleable globally, per project and per player. Player wins over project, project over global. |
-| O2 | Handoff note | Kept. Shown in the next briefing, for context when a new agent starts. |
+| O2 | Handoff note | Required for approval, no minimum length. Shown in the next briefing, for context when a new agent starts. |
 | O3 | Progress map in the app | Kept. |
 | O4 | Hints | Per criterion, visible at any time in the app, surfaced when a criterion fails. Not sent over MCP. |
 | O5 | Reset my own progress | Kept: a step or the whole project. |
@@ -92,10 +93,8 @@ reports again.
 10. A skipped step stays `skipped` and can be reopened.
 11. Devtools are a `developer` role and a small separate frontend.
 12. Chosen, may change: the first developer gets the role through a one-off bootstrap command.
-
-## Open
-
-- Name: "step" or "checkpoint"?
-- Is the handoff note required for approval, or optional?
-- Does the person see past reports in the app, or only the latest?
-- Where the devtools frontend lives: STU-31.
+13. A step can't be approved without a handoff note. There is no minimum length.
+14. The player sees the latest report of each step; devtools show every report.
+15. The devtools frontend lives in this repository (monorepo); its layout is STU-31.
+16. Every agent call names a project. The agent lists the person's projects first; if several fit
+    and nothing in its location, codebase or context says which, it asks the person.

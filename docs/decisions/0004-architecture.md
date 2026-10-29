@@ -74,7 +74,7 @@ fails; "Review" means a person checks it by hand, until CI automates it (STU-34)
 | 19 | `shared` can't see game types. | Compiler | `shared` has no workspace dependencies, so importing a `domain` or `application` type fails to resolve. |
 | 20 | No module or file outside `shared` is named `util`, `utils`, `helper`, `helpers`, `common`, `misc` or `shared`. | Review | A file or `mod` with one of those names in any other crate. |
 | 21 | `application/src/` contains only `lib.rs`, `ports/`, `use_cases/` and `testkit/`. | Review | Any other file or folder there, such as a helper module for use cases. |
-| 22 | Names in `shared` use no game vocabulary (the glossary from STU-26). | Review | A type, function or module in `shared` named after a game concept. |
+| 22 | Names in `shared` use no game vocabulary (the concepts in `docs/domain/user-flow.md`). | Review | A type, function or module in `shared` named after a game concept. |
 
 ## Where a change goes
 

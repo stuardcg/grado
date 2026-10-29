@@ -11,6 +11,7 @@ outcome.
 | [0003](0003-hosting.md) | Host on AWS Lambda behind a Function URL | Accepted |
 | [0004](0004-architecture.md) | Hexagon with one module per use case | Accepted |
 | [0005](0005-conventional-commits.md) | Conventional Commits | Accepted |
+| [0006](0006-domain-model.md) | Domain model | Accepted |
 
 ## Template
 
