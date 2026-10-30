@@ -1,0 +1,16 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+edition = "2024"
+version = "0.1.0"
+license = "PolyForm-Noncommercial-1.0.0"
+publish = false
+
+[workspace.dependencies]
+shared = { path = "crates/shared" }
+domain = { path = "crates/domain" }
+application = { path = "crates/application" }
+inbound-mcp = { path = "crates/inbound-mcp" }
+outbound-memory = { path = "crates/outbound-memory" }

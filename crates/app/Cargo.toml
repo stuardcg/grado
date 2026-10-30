@@ -1,0 +1,13 @@
+[package]
+name = "app"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+application.workspace = true
+domain.workspace = true
+inbound-mcp.workspace = true
+outbound-memory.workspace = true
+shared.workspace = true
