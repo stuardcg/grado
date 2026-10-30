@@ -8,13 +8,17 @@ serves, and why it exists. Names are working names; paths, payloads and sign-in 
 
 Every tool except `list_my_projects` takes a project.
 
+Before every tool, the MCP adapter calls `authenticate_agent_connection` with the connection's
+token. It returns the player the connection acts for, or refuses a revoked or unknown connection
+(E8). The tool's use case then runs for that player (ADR 0004 rule 24). It is not a tool itself.
+
 | Tool | Use case | Flow | Why |
 |---|---|---|---|
 | `list_my_projects` | `list_my_projects` | M5 | The agent finds which project it is working on. If there are several and its location, codebase or context doesn't say which, it asks the person. |
 | `get_briefing` | `get_briefing` | M5, E7, E11, E12 | A fresh agent needs the project, the current step, a preview of the next one and the previous handoff note. No criteria. |
 | `get_criteria` | `get_criteria` | M7 | Criteria come only after the work, so the agent doesn't build towards the checks. The response suggests a fresh review agent. |
 | `send_report` | `submit_report` | M8, M9, failed report | The agent's pass or fail per criterion, plus the handoff note when everything passes. A fail tells the agent to stop and tell the person. |
-| `get_stamp` | `issue_stamp` | M9, E10 | Hands the person a stamp once the step is approved. A new call voids the previous stamp. |
+| `get_stamp` | `issue_stamp` | M9, E10, E14 | Hands the person a stamp once the step is approved. A new call voids the previous stamp. Refused when the stamp is off. |
 
 ## HTTP: app (signed-in person)
 

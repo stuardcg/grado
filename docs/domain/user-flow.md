@@ -74,10 +74,11 @@ reports again.
 | E7 | New agent, or lost context partway through a step. | The briefing, the handoff note and the codebase restore context. |
 | E8 | A connection is revoked or leaked. | Revoked connections are refused at once. Progress is unaffected. |
 | E9 | Project content changes while a player is on it. | Chosen, may change: migrate only at a step boundary. |
-| E10 | Stamp lost, expired, entered twice, or by another player. | Once approved, a new stamp is always available from the MCP or the app and voids the old one. Second entry and other players are refused. |
+| E10 | Stamp lost, expired, entered twice, or by another player. | Once approved, a new stamp is always available from the MCP or the app and voids the old one. Second entry and other players are refused. Stamps don't expire for now; whether they get a lifetime is STU-39. |
 | E11 | The agent keeps going after a step is done. | The MCP response tells it to suggest a fresh agent, or to fetch the next briefing if the person wants to continue here. |
 | E12 | The player comes back after a long time. | Same as E7, plus self-reset (O5). |
 | E13 | The person deletes their account. | Later; not in the foundation. |
+| E14 | Agent asks for a stamp while the stamp is off. | Refused; the response says the step was done at approval and needs no stamp. |
 
 ## Decisions
 
