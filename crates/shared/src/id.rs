@@ -7,6 +7,21 @@ use std::marker::PhantomData;
 /// A string identifier tagged with the kind of thing it names, so an `Id<A>` can't be passed where
 /// an `Id<B>` is expected.
 ///
+/// Tag each kind with its own type, usually behind an alias:
+///
+/// ```
+/// use shared::id::Id;
+///
+/// enum Apple {}
+/// type AppleId = Id<Apple>;
+///
+/// let apple = AppleId::new("a");
+/// assert_eq!(apple.as_str(), "a");
+/// assert_eq!(apple, AppleId::new("a"));
+/// ```
+///
+/// Ids of different kinds don't mix, even when they hold the same value:
+///
 /// ```compile_fail,E0308
 /// use shared::id::Id;
 ///
