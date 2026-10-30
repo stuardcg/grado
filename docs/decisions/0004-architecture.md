@@ -34,8 +34,21 @@ The table is a ceiling: a crate lists only the dependencies it uses, and a depen
 the change that first uses it.
 
 `shared`, `domain` and `application` are the core; every other crate is an adapter or wiring.
-Each crate lives in `crates/<name>/`, and its package name is `<name>`. The in-memory fakes are an
-adapter like any other: `outbound-memory`.
+Each crate lives in `crates/<name>/`, and its package name is `<name>`. The in-memory adapter,
+`outbound-memory`, is an adapter like any other. It is temporary: it runs the app until a database
+adapter replaces it.
+
+## Tests
+
+Use-case tests never depend on an adapter, so they outlive any one of them and the core's
+dependency lists stay exactly as the table says.
+
+- **Test fakes** live in `application/src/testkit/<concern>.rs`, next to that port's shared test
+  suite. Each fake runs its own port's suite. Fakes are not adapters.
+- **Use-case tests** sit in the use case's file, in a `#[cfg(test)]` module, on the testkit fakes.
+  A hand-written stub private to one test is fine for making a port fail on purpose.
+- **Adapters** run the same suites. `testkit` is behind a `testkit` cargo feature that an
+  `outbound-*` crate turns on only under `[dev-dependencies]`.
 
 ## Shared code
 
@@ -68,7 +81,7 @@ fails; "Review" means a person checks it by hand, until CI automates it (STU-34)
 | 8 | Decisions about the game are made by `domain` functions. A use case loads through ports, calls the domain, saves through ports. | Review | A comparison (`==`, `!=`, `<`, `>`, `<=`, `>=`) or a count (`len`, `count`) in a use case on a value that came from a port or the domain. |
 | 9 | `application` contains no numeric or duration literals other than `0` and `1`. Adapters keep every numeric or duration literal in a named `const`. | Review | Any other literal in `application`; an unnamed literal in an adapter. |
 | 10 | Ports are traits in `application/src/ports/<concern>.rs`, one file per concern. Port signatures use only `domain` and `application` types. | Compiler (types) and Review (file layout) | A port in another place, or a port grouping unrelated concerns. |
-| 11 | Every port has one shared test suite in `application/src/testkit/`, run by its fake in `outbound-memory` and by every other `outbound-*` implementation. | Review | A new port or port implementation without the suite wired in. |
+| 11 | Every port has one shared test suite and one fake in `application/src/testkit/<concern>.rs`. The suite runs against that fake and every `outbound-*` implementation. | Review | A new port, fake or port implementation without the suite wired in. |
 | 12 | `shared`, `domain` and `application` never read the clock or generate randomness or IDs; they ask a port. | Review | `SystemTime::now`, `Instant::now`, or a random or UUID call in those crates. |
 | 13 | `Error` variants carry data (ids, counts), never sentences. Each inbound adapter maps every variant of a use case's `Error` in one exhaustive `match`, and that is the only place caller-facing wording is written. | Compiler (exhaustive `match`) and Review | An application error turned into text with `to_string()` or `format!` in an inbound crate; a `String` message field on an `Error` variant. |
 | 14 | Inbound adapters call use cases only, never ports. | Review | `application::ports` imported in an `inbound-*` crate. |
@@ -80,6 +93,9 @@ fails; "Review" means a person checks it by hand, until CI automates it (STU-34)
 | 20 | No module or file outside `shared` is named `util`, `utils`, `helper`, `helpers`, `common`, `misc` or `shared`. | Review | A file or `mod` with one of those names in any other crate. |
 | 21 | `application/src/` contains only `lib.rs`, `ports/`, `use_cases/` and `testkit/`. | Review | Any other file or folder there, such as a helper module for use cases. |
 | 22 | Names in `shared` use no game vocabulary (the concepts in `docs/domain/user-flow.md`). | Review | A type, function or module in `shared` named after a game concept. |
+| 23 | The `testkit` feature is on only in tests: `application`'s own, and `outbound-*` crates' `[dev-dependencies]`. | Review | `features = ["testkit"]` under `[dependencies]` in any crate. |
+| 24 | A use case acting for a player takes its `PlayerId` in `Input`, never a token or session. Each inbound adapter gets the `PlayerId` by calling its transport's authentication use case first (for MCP, `authenticate_agent_connection`). | Compiler (types) and Review | A token or session type in a use case's `Input` other than an authentication use case's. |
+| 25 | A port that saves state a use case loaded refuses the save if that state changed since it was loaded, and its suite tests that refusal. | Review | A save method without a version check, or a suite without the conflict test. |
 
 ## Where a change goes
 
@@ -92,7 +108,7 @@ fails; "Review" means a person checks it by hand, until CI automates it (STU-34)
 | New use case | `application/src/use_cases/<verb>_<noun>.rs` |
 | Expose a use case on a transport | One binding in `inbound-<transport>/src/bindings.rs` |
 | New transport | New crate `inbound-<transport>`, wired in `app` |
-| New outside need (storage, service, clock) | Port in `application/src/ports/<concern>.rs`, its fake and test suite, and an implementation in each `outbound-*` crate that serves it |
+| New outside need (storage, service, clock) | Port in `application/src/ports/<concern>.rs`, its fake and suite in `application/src/testkit/<concern>.rs`, and an implementation in each `outbound-*` crate that serves it |
 | New storage or external provider | New crate `outbound-<technology>` passing the port suites, wired in `app` |
 | New runtime target | `app/src/bin/<target>.rs` |
 
