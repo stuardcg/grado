@@ -14,7 +14,7 @@ graph LR
   domain --> shared
   application --> domain
   inbound["inbound-* (http, mcp)"] --> application
-  outbound["outbound-* (postgres, dynamodb, claude…)"] --> application
+  outbound["outbound-* (memory, postgres, dynamodb…)"] --> application
   app --> inbound
   app --> outbound
 ```
@@ -31,6 +31,8 @@ Every crate may also depend on `shared`; those arrows are left out of the graph.
 | `app` | Wiring and one binary per runtime target | all | any |
 
 `shared`, `domain` and `application` are the core; every other crate is an adapter or wiring.
+Each crate lives in `crates/<name>/`, and its package name is `<name>`. The in-memory fakes are an
+adapter like any other: `outbound-memory`.
 
 ## Shared code
 
@@ -63,11 +65,11 @@ fails; "Review" means a person checks it by hand, until CI automates it (STU-34)
 | 8 | Decisions about the game are made by `domain` functions. A use case loads through ports, calls the domain, saves through ports. | Review | A comparison (`==`, `!=`, `<`, `>`, `<=`, `>=`) or a count (`len`, `count`) in a use case on a value that came from a port or the domain. |
 | 9 | `application` contains no numeric or duration literals other than `0` and `1`. Adapters keep every numeric or duration literal in a named `const`. | Review | Any other literal in `application`; an unnamed literal in an adapter. |
 | 10 | Ports are traits in `application/src/ports/<concern>.rs`, one file per concern. Port signatures use only `domain` and `application` types. | Compiler (types) and Review (file layout) | A port in another place, or a port grouping unrelated concerns. |
-| 11 | Every port has one shared test suite in `application/src/testkit/`, run by the in-memory fake and by every `outbound-*` implementation. | Review | A new port or port implementation without the suite wired in. |
+| 11 | Every port has one shared test suite in `application/src/testkit/`, run by its fake in `outbound-memory` and by every other `outbound-*` implementation. | Review | A new port or port implementation without the suite wired in. |
 | 12 | `shared`, `domain` and `application` never read the clock or generate randomness or IDs; they ask a port. | Review | `SystemTime::now`, `Instant::now`, or a random or UUID call in those crates. |
 | 13 | `Error` variants carry data (ids, counts), never sentences. Each inbound adapter maps every variant of a use case's `Error` in one exhaustive `match`, and that is the only place caller-facing wording is written. | Compiler (exhaustive `match`) and Review | An application error turned into text with `to_string()` or `format!` in an inbound crate; a `String` message field on an `Error` variant. |
 | 14 | Inbound adapters call use cases only, never ports. | Review | `application::ports` imported in an `inbound-*` crate. |
-| 15 | Each inbound crate exposes use cases in one file: `inbound-<transport>/src/bindings.rs`. The binding mechanism is defined by STU-25. | Review | Use-case calls outside `bindings.rs`. |
+| 15 | Each inbound crate exposes use cases in one file: `inbound-<transport>/src/bindings.rs`. Until STU-25 defines the mechanism, bindings there are written by hand. | Review | Use-case calls outside `bindings.rs`. |
 | 16 | Outbound adapters only implement ports. Every `if` or `match` in them is about the technology: encoding, errors, retries, pagination. | Review | A branch in an `outbound-*` crate on a domain value for any other reason. |
 | 17 | `app` only builds adapters and starts a runtime; one file per runtime in `app/src/bin/` (`lambda.rs`, `server.rs`). | Review | Any logic in `app` other than construction and startup. |
 | 18 | Code used in two or more modules lives in the home the "Shared code" table gives it. | Review | The same function body in two places, or shared code in a home its classification doesn't give it. |
