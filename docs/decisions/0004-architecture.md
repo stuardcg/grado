@@ -30,6 +30,9 @@ Every crate may also depend on `shared`; those arrows are left out of the graph.
 | `outbound-<technology>` | Implementing ports | `application`, `domain`, `shared` | any |
 | `app` | Wiring and one binary per runtime target | all | any |
 
+The table is a ceiling: a crate lists only the dependencies it uses, and a dependency is added by
+the change that first uses it.
+
 `shared`, `domain` and `application` are the core; every other crate is an adapter or wiring.
 Each crate lives in `crates/<name>/`, and its package name is `<name>`. The in-memory fakes are an
 adapter like any other: `outbound-memory`.
@@ -56,7 +59,7 @@ fails; "Review" means a person checks it by hand, until CI automates it (STU-34)
 | # | Rule | Check | Violation shows up as |
 |---|---|---|---|
 | 1 | Workspace crates depend only as in the table above. | Compiler | Unresolved import of a crate that isn't a dependency. |
-| 2 | `shared`, `domain` and `application` dependency lists match the table exactly. | Review | A diff in `crates/shared/Cargo.toml`, `crates/domain/Cargo.toml` or `crates/application/Cargo.toml` adding a crate. |
+| 2 | `shared`, `domain` and `application` depend on nothing outside their row of the table. | Review | A diff in `crates/shared/Cargo.toml`, `crates/domain/Cargo.toml` or `crates/application/Cargo.toml` adding a crate the table doesn't list. |
 | 3 | No adapter crate depends on another adapter crate. | Review | A diff in an `inbound-*` or `outbound-*` `Cargo.toml` naming another adapter. |
 | 4 | Domain types never cross the wire. | Compiler | `domain` has no `serde`, so deriving `Serialize` on a domain type doesn't compile. |
 | 5 | One use case = one file: `application/src/use_cases/<verb>_<noun>.rs`. | Review | A use case split across files, or two use cases in one file. |
