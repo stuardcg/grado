@@ -1,4 +1,5 @@
-//! An agent's report on a step, and what it leads to.
+//! An agent's report on a step, and what it leads to. `Progress::submit` checks a report and
+//! returns a `ReportOutcome` when it is recorded, or a `ReportRefused` when it isn't.
 
 use shared::text::NonBlankString;
 
@@ -34,6 +35,7 @@ pub struct Report {
     pub handoff_note: Option<HandoffNote>,
 }
 
+/// What a recorded report did to its step.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReportOutcome {
     /// Recorded; the agent stops and tells the person. Listed in the step's criteria order.
