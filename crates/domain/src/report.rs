@@ -49,6 +49,8 @@ pub enum ReportOutcome {
 /// A report that isn't recorded at all.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReportRefused {
+    /// The project has no such step.
+    UnknownStep(StepId),
     /// The reported step isn't the open one (E1). `open` is the step that is, if any.
     StepNotOpen { open: Option<StepId> },
     /// The verdicts don't cover exactly the step's criteria, once each (E1).

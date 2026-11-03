@@ -83,10 +83,10 @@ impl Progress {
         report: Report,
         mode: StampMode,
     ) -> Result<ReportOutcome, ReportRefused> {
-        let index = self
-            .find(&report.step)
-            .filter(|&index| self.steps[index].state == StepState::Open)
-            .ok_or_else(|| ReportRefused::StepNotOpen { open: self.open_step().cloned() })?;
+        let index = self.find(&report.step).ok_or_else(|| ReportRefused::UnknownStep(report.step.clone()))?;
+        if self.steps[index].state != StepState::Open {
+            return Err(ReportRefused::StepNotOpen { open: self.open_step().cloned() });
+        }
         let expected = criteria_of(project, &report.step);
         if !covers_exactly(&report.verdicts, &expected) {
             return Err(ReportRefused::CriteriaMismatch { expected });
@@ -334,7 +334,8 @@ mod tests {
 
         let outcome = progress.submit(&project, report("deploy", &[("reads-rules", Pass)], None), Off);
 
-        assert_eq!(outcome, Err(ReportRefused::StepNotOpen { open: Some(id("investigate")) }));
+        assert_eq!(outcome, Err(ReportRefused::UnknownStep(id("deploy"))));
+        assert_eq!(progress, Progress::start(&project));
     }
 
     #[test]
