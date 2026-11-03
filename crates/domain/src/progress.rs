@@ -178,31 +178,37 @@ fn not_passed(expected: &[CriterionId], report: Option<&Report>) -> Vec<Criterio
 
 #[cfg(test)]
 mod tests {
+    use shared::text::NonBlankString;
+
     use super::*;
     use crate::project::{Criterion, Step};
     use crate::report::Verdict::{Fail, Pass};
     use crate::stamp::StampMode::{Off, On};
 
     fn id(value: &str) -> StepId {
-        StepId::new(value)
+        StepId::new(value).expect("test ids aren't blank")
     }
 
     fn cid(value: &str) -> CriterionId {
-        CriterionId::new(value)
+        CriterionId::new(value).expect("test ids aren't blank")
+    }
+
+    fn text(value: &str) -> NonBlankString {
+        NonBlankString::new(value).expect("test text isn't blank")
     }
 
     fn step(step: &str, criteria: &[&str]) -> Step {
         Step {
             id: id(step),
-            title: step.into(),
-            guide: format!("Why {step} matters"),
+            title: text(step),
+            guide: text(&format!("Why {step} matters")),
             criteria: criteria
                 .iter()
                 .map(|c| Criterion {
                     id: cid(c),
-                    title: (*c).into(),
-                    instructions: format!("Check {c}"),
-                    hint: format!("Try {c}"),
+                    title: text(c),
+                    instructions: text(&format!("Check {c}")),
+                    hint: text(&format!("Try {c}")),
                 })
                 .collect(),
         }
@@ -211,8 +217,8 @@ mod tests {
     /// `investigate` (reads-rules, lists-fields), then `plan` (has-plan, plan-reviewed).
     fn bike_registration() -> Project {
         Project::new(
-            ProjectId::new("bike-registration"),
-            "Bike registration".into(),
+            ProjectId::new("bike-registration").expect("test ids aren't blank"),
+            text("Bike registration"),
             vec![
                 step("investigate", &["reads-rules", "lists-fields"]),
                 step("plan", &["has-plan", "plan-reviewed"]),

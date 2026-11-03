@@ -3,6 +3,7 @@
 use std::collections::HashSet;
 
 use shared::id::Id;
+use shared::text::NonBlankString;
 
 pub type ProjectId = Id<Project>;
 pub type StepId = Id<Step>;
@@ -13,15 +14,15 @@ pub type CriterionId = Id<Criterion>;
 #[derive(Debug, Clone)]
 pub struct Project {
     id: ProjectId,
-    title: String,
+    title: NonBlankString,
     steps: Vec<Step>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Step {
     pub id: StepId,
-    pub title: String,
-    pub guide: String,
+    pub title: NonBlankString,
+    pub guide: NonBlankString,
     pub criteria: Vec<Criterion>,
 }
 
@@ -29,9 +30,9 @@ pub struct Step {
 #[derive(Debug, Clone)]
 pub struct Criterion {
     pub id: CriterionId,
-    pub title: String,
-    pub instructions: String,
-    pub hint: String,
+    pub title: NonBlankString,
+    pub instructions: NonBlankString,
+    pub hint: NonBlankString,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -43,7 +44,7 @@ pub enum ProjectInvalid {
 }
 
 impl Project {
-    pub fn new(id: ProjectId, title: String, steps: Vec<Step>) -> Result<Self, ProjectInvalid> {
+    pub fn new(id: ProjectId, title: NonBlankString, steps: Vec<Step>) -> Result<Self, ProjectInvalid> {
         if steps.is_empty() {
             return Err(ProjectInvalid::NoSteps);
         }
@@ -70,7 +71,7 @@ impl Project {
     }
 
     pub fn title(&self) -> &str {
-        &self.title
+        self.title.as_str()
     }
 
     pub fn steps(&self) -> &[Step] {
@@ -86,34 +87,47 @@ impl Project {
 mod tests {
     use super::*;
 
+    fn text(value: &str) -> NonBlankString {
+        NonBlankString::new(value).expect("test text isn't blank")
+    }
+
+    fn step_id(value: &str) -> StepId {
+        StepId::new(value).expect("test ids aren't blank")
+    }
+
+    fn criterion_id(value: &str) -> CriterionId {
+        CriterionId::new(value).expect("test ids aren't blank")
+    }
+
     fn criterion(id: &str) -> Criterion {
         Criterion {
-            id: CriterionId::new(id),
-            title: format!("{id} title"),
-            instructions: format!("check {id}"),
-            hint: format!("{id} hint"),
+            id: criterion_id(id),
+            title: text(&format!("{id} title")),
+            instructions: text(&format!("check {id}")),
+            hint: text(&format!("{id} hint")),
         }
     }
 
     fn step(id: &str, criteria: &[&str]) -> Step {
         Step {
-            id: StepId::new(id),
-            title: format!("{id} title"),
-            guide: format!("{id} guide"),
+            id: step_id(id),
+            title: text(&format!("{id} title")),
+            guide: text(&format!("{id} guide")),
             criteria: criteria.iter().map(|c| criterion(c)).collect(),
         }
     }
 
     fn project(steps: Vec<Step>) -> Result<Project, ProjectInvalid> {
-        Project::new(ProjectId::new("bike-registration"), "Bike registration".into(), steps)
+        let id = ProjectId::new("bike-registration").expect("test ids aren't blank");
+        Project::new(id, text("Bike registration"), steps)
     }
 
     #[test]
     fn a_valid_project_finds_its_steps() {
         let project = project(vec![step("investigate", &["reads-rules"]), step("plan", &["has-plan"])])
             .expect("valid project");
-        assert_eq!(project.step(&StepId::new("plan")).map(|s| s.title.as_str()), Some("plan title"));
-        assert!(project.step(&StepId::new("deploy")).is_none());
+        assert_eq!(project.step(&step_id("plan")).map(|s| s.title.as_str()), Some("plan title"));
+        assert!(project.step(&step_id("deploy")).is_none());
     }
 
     #[test]
@@ -125,7 +139,7 @@ mod tests {
     fn every_step_needs_criteria() {
         assert_eq!(
             project(vec![step("investigate", &[])]).unwrap_err(),
-            ProjectInvalid::StepWithoutCriteria(StepId::new("investigate"))
+            ProjectInvalid::StepWithoutCriteria(step_id("investigate"))
         );
     }
 
@@ -133,7 +147,7 @@ mod tests {
     fn step_ids_are_unique() {
         assert_eq!(
             project(vec![step("investigate", &["a"]), step("investigate", &["b"])]).unwrap_err(),
-            ProjectInvalid::DuplicateStep(StepId::new("investigate"))
+            ProjectInvalid::DuplicateStep(step_id("investigate"))
         );
     }
 
@@ -141,7 +155,7 @@ mod tests {
     fn criterion_ids_are_unique_across_steps() {
         assert_eq!(
             project(vec![step("investigate", &["a"]), step("plan", &["a"])]).unwrap_err(),
-            ProjectInvalid::DuplicateCriterion(CriterionId::new("a"))
+            ProjectInvalid::DuplicateCriterion(criterion_id("a"))
         );
     }
 }

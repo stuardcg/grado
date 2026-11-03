@@ -1,5 +1,7 @@
 //! An agent's report on a step, and what it leads to.
 
+use shared::text::NonBlankString;
+
 use crate::project::{CriterionId, StepId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -11,17 +13,16 @@ pub enum Verdict {
 /// A short summary the agent sends with an all-pass report, shown in the next briefing. It has no
 /// minimum length, but it can't be blank.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct HandoffNote(String);
+pub struct HandoffNote(NonBlankString);
 
 impl HandoffNote {
-    /// Returns `None` for blank text: a blank note counts as no note.
+    /// Returns `None` for blank text: a blank note counts as no note (ADR 0007).
     pub fn new(text: impl Into<String>) -> Option<Self> {
-        let text = text.into();
-        if text.trim().is_empty() { None } else { Some(Self(text)) }
+        NonBlankString::new(text).map(Self)
     }
 
     pub fn as_str(&self) -> &str {
-        &self.0
+        self.0.as_str()
     }
 }
 

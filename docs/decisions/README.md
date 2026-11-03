@@ -12,6 +12,7 @@ outcome.
 | [0004](0004-architecture.md) | Hexagon with one module per use case | Accepted |
 | [0005](0005-conventional-commits.md) | Conventional Commits | Accepted |
 | [0006](0006-domain-model.md) | Domain model | Accepted |
+| [0007](0007-non-blank-values.md) | Ids and readable text are never blank | Accepted |
 
 ## Template
 
