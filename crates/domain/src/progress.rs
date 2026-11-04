@@ -76,7 +76,7 @@ impl Progress {
 
     /// Records a report on the open step. A fail is recorded and leaves the step open; an all-pass
     /// report with a handoff note approves it, and with the stamp off also completes it and opens
-    /// the next step. A refused report changes nothing.
+    /// the next step. A refused report changes nothing. `mode` comes from `settings::stamp_mode`.
     pub fn submit(
         &mut self,
         project: &Project,
@@ -103,19 +103,16 @@ impl Progress {
 
         self.steps[index].latest_report = Some(report);
         self.last_handoff_note = Some(note);
-        match mode {
-            StampMode::On => {
-                self.steps[index].state = StepState::Approved;
-                Ok(ReportOutcome::Approved)
-            }
-            StampMode::Off => {
-                self.steps[index].state = StepState::Done;
-                Ok(ReportOutcome::Done { next: self.open_after(index) })
-            }
+        if mode.is_on() {
+            self.steps[index].state = StepState::Approved;
+            Ok(ReportOutcome::Approved)
+        } else {
+            self.steps[index].state = StepState::Done;
+            Ok(ReportOutcome::Done { next: self.open_after(index) })
         }
     }
 
-    /// Whether a stamp may be issued for `step` now.
+    /// Whether a stamp may be issued for `step` now. `mode` comes from `settings::stamp_mode`.
     pub fn stamp_allowed(
         &self,
         project: &Project,
@@ -123,7 +120,7 @@ impl Progress {
         mode: StampMode,
     ) -> Result<(), StampRefused> {
         let index = self.find(step).ok_or_else(|| StampRefused::UnknownStep(step.clone()))?;
-        if mode == StampMode::Off {
+        if !mode.is_on() {
             return Err(StampRefused::StampOff);
         }
         let entry = &self.steps[index];
@@ -183,7 +180,10 @@ mod tests {
     use super::*;
     use crate::project::{Criterion, Step};
     use crate::report::Verdict::{Fail, Pass};
-    use crate::stamp::StampMode::{Off, On};
+    use crate::stamp::StampSetting;
+
+    const ON: StampMode = StampMode::new(StampSetting::On);
+    const OFF: StampMode = StampMode::new(StampSetting::Off);
 
     fn id(value: &str) -> StepId {
         StepId::new(value).expect("test ids aren't blank")
@@ -255,7 +255,7 @@ mod tests {
         let mut progress = Progress::start(&project);
         let failing = report("investigate", &[("reads-rules", Pass), ("lists-fields", Fail)], None);
 
-        let outcome = progress.submit(&project, failing.clone(), Off);
+        let outcome = progress.submit(&project, failing.clone(), OFF);
 
         assert_eq!(outcome, Ok(ReportOutcome::Failed { failed: vec![cid("lists-fields")] }));
         assert_eq!(progress.state(&id("investigate")), Some(StepState::Open));
@@ -267,7 +267,7 @@ mod tests {
         let project = bike_registration();
         let mut progress = Progress::start(&project);
 
-        let outcome = progress.submit(&project, all_pass(Some("Fields listed in FIELDS.md")), Off);
+        let outcome = progress.submit(&project, all_pass(Some("Fields listed in FIELDS.md")), OFF);
 
         assert_eq!(outcome, Ok(ReportOutcome::Done { next: Some(id("plan")) }));
         assert_eq!(progress.state(&id("investigate")), Some(StepState::Done));
@@ -282,7 +282,7 @@ mod tests {
         let project = bike_registration();
         let mut progress = Progress::start(&project);
 
-        let outcome = progress.submit(&project, all_pass(Some("Done")), On);
+        let outcome = progress.submit(&project, all_pass(Some("Done")), ON);
 
         assert_eq!(outcome, Ok(ReportOutcome::Approved));
         assert_eq!(progress.state(&id("investigate")), Some(StepState::Approved));
@@ -294,10 +294,10 @@ mod tests {
     fn the_last_step_done_leaves_nothing_open() {
         let project = bike_registration();
         let mut progress = Progress::start(&project);
-        progress.submit(&project, all_pass(Some("Done")), Off).expect("first step done");
+        progress.submit(&project, all_pass(Some("Done")), OFF).expect("first step done");
 
         let last = report("plan", &[("has-plan", Pass), ("plan-reviewed", Pass)], Some("Plan in PLAN.md"));
-        let outcome = progress.submit(&project, last, Off);
+        let outcome = progress.submit(&project, last, OFF);
 
         assert_eq!(outcome, Ok(ReportOutcome::Done { next: None }));
         assert_eq!(progress.current_step(), None);
@@ -308,9 +308,9 @@ mod tests {
         let project = bike_registration();
         let mut progress = Progress::start(&project);
 
-        assert_eq!(progress.submit(&project, all_pass(None), Off), Err(ReportRefused::HandoffNoteMissing));
+        assert_eq!(progress.submit(&project, all_pass(None), OFF), Err(ReportRefused::HandoffNoteMissing));
         assert_eq!(
-            progress.submit(&project, all_pass(Some("   ")), Off),
+            progress.submit(&project, all_pass(Some("   ")), OFF),
             Err(ReportRefused::HandoffNoteMissing)
         );
         assert_eq!(progress, Progress::start(&project));
@@ -320,9 +320,9 @@ mod tests {
     fn a_report_on_a_step_that_isnt_open_names_the_open_step() {
         let project = bike_registration();
         let mut progress = Progress::start(&project);
-        progress.submit(&project, all_pass(Some("Done")), Off).expect("first step done");
+        progress.submit(&project, all_pass(Some("Done")), OFF).expect("first step done");
 
-        let outcome = progress.submit(&project, all_pass(Some("Again")), Off);
+        let outcome = progress.submit(&project, all_pass(Some("Again")), OFF);
 
         assert_eq!(outcome, Err(ReportRefused::StepNotOpen { open: Some(id("plan")) }));
     }
@@ -332,7 +332,7 @@ mod tests {
         let project = bike_registration();
         let mut progress = Progress::start(&project);
 
-        let outcome = progress.submit(&project, report("deploy", &[("reads-rules", Pass)], None), Off);
+        let outcome = progress.submit(&project, report("deploy", &[("reads-rules", Pass)], None), OFF);
 
         assert_eq!(outcome, Err(ReportRefused::UnknownStep(id("deploy"))));
         assert_eq!(progress, Progress::start(&project));
@@ -355,7 +355,7 @@ mod tests {
         );
 
         for wrong in [missing, foreign, twice, extra] {
-            assert_eq!(progress.submit(&project, wrong, Off), expected);
+            assert_eq!(progress.submit(&project, wrong, OFF), expected);
         }
         assert_eq!(progress, Progress::start(&project));
     }
@@ -364,9 +364,9 @@ mod tests {
     fn a_stamp_is_allowed_once_the_step_is_approved() {
         let project = bike_registration();
         let mut progress = Progress::start(&project);
-        progress.submit(&project, all_pass(Some("Done")), On).expect("approved");
+        progress.submit(&project, all_pass(Some("Done")), ON).expect("approved");
 
-        assert_eq!(progress.stamp_allowed(&project, &id("investigate"), On), Ok(()));
+        assert_eq!(progress.stamp_allowed(&project, &id("investigate"), ON), Ok(()));
     }
 
     #[test]
@@ -375,13 +375,13 @@ mod tests {
         let mut progress = Progress::start(&project);
         let not_yet =
             Err(StampRefused::NotApproved { pending: vec![cid("reads-rules"), cid("lists-fields")] });
-        assert_eq!(progress.stamp_allowed(&project, &id("investigate"), On), not_yet);
+        assert_eq!(progress.stamp_allowed(&project, &id("investigate"), ON), not_yet);
 
         let failing = report("investigate", &[("reads-rules", Pass), ("lists-fields", Fail)], None);
-        progress.submit(&project, failing, On).expect("recorded");
+        progress.submit(&project, failing, ON).expect("recorded");
 
         assert_eq!(
-            progress.stamp_allowed(&project, &id("investigate"), On),
+            progress.stamp_allowed(&project, &id("investigate"), ON),
             Err(StampRefused::NotApproved { pending: vec![cid("lists-fields")] })
         );
     }
@@ -390,9 +390,9 @@ mod tests {
     fn a_stamp_is_refused_when_the_stamp_is_off() {
         let project = bike_registration();
         let mut progress = Progress::start(&project);
-        progress.submit(&project, all_pass(Some("Done")), Off).expect("done");
+        progress.submit(&project, all_pass(Some("Done")), OFF).expect("done");
 
-        assert_eq!(progress.stamp_allowed(&project, &id("investigate"), Off), Err(StampRefused::StampOff));
+        assert_eq!(progress.stamp_allowed(&project, &id("investigate"), OFF), Err(StampRefused::StampOff));
     }
 
     #[test]
@@ -401,7 +401,7 @@ mod tests {
         let progress = Progress::start(&project);
 
         assert_eq!(
-            progress.stamp_allowed(&project, &id("deploy"), On),
+            progress.stamp_allowed(&project, &id("deploy"), ON),
             Err(StampRefused::UnknownStep(id("deploy")))
         );
     }

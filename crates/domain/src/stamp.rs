@@ -2,25 +2,27 @@
 
 use crate::project::{CriterionId, StepId};
 
+/// The stamp setting stored at one level: the game, a project or a player.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StampMode {
+pub enum StampSetting {
     /// The step waits at `approved` until the person enters a stamp.
     On,
     /// The step is done at approval; there is no stamp.
     Off,
 }
 
-/// The stamp setting at its three levels (O1). The most specific one that is set wins.
+/// The stamp setting that applies, once the levels are resolved (O1). Outside this crate, the
+/// only way to get one is `settings::stamp_mode`, so no caller can skip the levels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct StampSettings {
-    pub global: StampMode,
-    pub project: Option<StampMode>,
-    pub player: Option<StampMode>,
-}
+pub struct StampMode(StampSetting);
 
-impl StampSettings {
-    pub fn resolve(&self) -> StampMode {
-        self.player.or(self.project).unwrap_or(self.global)
+impl StampMode {
+    pub(crate) const fn new(setting: StampSetting) -> Self {
+        Self(setting)
+    }
+
+    pub fn is_on(self) -> bool {
+        self.0 == StampSetting::On
     }
 }
 
@@ -33,28 +35,4 @@ pub enum StampRefused {
     StampOff,
     /// The project has no such step.
     UnknownStep(StepId),
-}
-
-#[cfg(test)]
-mod tests {
-    use super::StampMode::{Off, On};
-    use super::*;
-
-    #[test]
-    fn global_applies_when_nothing_else_is_set() {
-        let settings = StampSettings { global: On, project: None, player: None };
-        assert_eq!(settings.resolve(), On);
-    }
-
-    #[test]
-    fn project_wins_over_global() {
-        let settings = StampSettings { global: On, project: Some(Off), player: None };
-        assert_eq!(settings.resolve(), Off);
-    }
-
-    #[test]
-    fn player_wins_over_project() {
-        let settings = StampSettings { global: Off, project: Some(Off), player: Some(On) };
-        assert_eq!(settings.resolve(), On);
-    }
 }
