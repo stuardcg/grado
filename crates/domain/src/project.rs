@@ -36,7 +36,7 @@ pub struct Criterion {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ProjectInvalid {
+pub enum ProjectError {
     NoSteps,
     StepWithoutCriteria(StepId),
     DuplicateStep(StepId),
@@ -44,22 +44,22 @@ pub enum ProjectInvalid {
 }
 
 impl Project {
-    pub fn new(id: ProjectId, title: NonBlankString, steps: Vec<Step>) -> Result<Self, ProjectInvalid> {
+    pub fn new(id: ProjectId, title: NonBlankString, steps: Vec<Step>) -> Result<Self, ProjectError> {
         if steps.is_empty() {
-            return Err(ProjectInvalid::NoSteps);
+            return Err(ProjectError::NoSteps);
         }
         let mut step_ids = HashSet::new();
         let mut criterion_ids = HashSet::new();
         for step in &steps {
             if !step_ids.insert(&step.id) {
-                return Err(ProjectInvalid::DuplicateStep(step.id.clone()));
+                return Err(ProjectError::DuplicateStep(step.id.clone()));
             }
             if step.criteria.is_empty() {
-                return Err(ProjectInvalid::StepWithoutCriteria(step.id.clone()));
+                return Err(ProjectError::StepWithoutCriteria(step.id.clone()));
             }
             for criterion in &step.criteria {
                 if !criterion_ids.insert(&criterion.id) {
-                    return Err(ProjectInvalid::DuplicateCriterion(criterion.id.clone()));
+                    return Err(ProjectError::DuplicateCriterion(criterion.id.clone()));
                 }
             }
         }
@@ -117,7 +117,7 @@ mod tests {
         }
     }
 
-    fn project(steps: Vec<Step>) -> Result<Project, ProjectInvalid> {
+    fn project(steps: Vec<Step>) -> Result<Project, ProjectError> {
         let id = ProjectId::new("bike-registration").expect("test ids aren't blank");
         Project::new(id, text("Bike registration"), steps)
     }
@@ -132,14 +132,14 @@ mod tests {
 
     #[test]
     fn a_project_needs_steps() {
-        assert_eq!(project(vec![]).unwrap_err(), ProjectInvalid::NoSteps);
+        assert_eq!(project(vec![]).unwrap_err(), ProjectError::NoSteps);
     }
 
     #[test]
     fn every_step_needs_criteria() {
         assert_eq!(
             project(vec![step("investigate", &[])]).unwrap_err(),
-            ProjectInvalid::StepWithoutCriteria(step_id("investigate"))
+            ProjectError::StepWithoutCriteria(step_id("investigate"))
         );
     }
 
@@ -147,7 +147,7 @@ mod tests {
     fn step_ids_are_unique() {
         assert_eq!(
             project(vec![step("investigate", &["a"]), step("investigate", &["b"])]).unwrap_err(),
-            ProjectInvalid::DuplicateStep(step_id("investigate"))
+            ProjectError::DuplicateStep(step_id("investigate"))
         );
     }
 
@@ -155,7 +155,7 @@ mod tests {
     fn criterion_ids_are_unique_across_steps() {
         assert_eq!(
             project(vec![step("investigate", &["a"]), step("plan", &["a"])]).unwrap_err(),
-            ProjectInvalid::DuplicateCriterion(criterion_id("a"))
+            ProjectError::DuplicateCriterion(criterion_id("a"))
         );
     }
 }

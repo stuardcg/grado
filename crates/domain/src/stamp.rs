@@ -11,23 +11,19 @@ pub enum StampSetting {
     Off,
 }
 
-/// The stamp setting that applies, once the levels are resolved (O1). Outside this crate, the
-/// only way to get one is `settings::stamp_mode`, so no caller can skip the levels.
+/// When a step completes, once the stamp setting's levels are resolved by
+/// `settings::step_completion` (O1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct StampMode(StampSetting);
-
-impl StampMode {
-    pub(crate) const fn new(setting: StampSetting) -> Self {
-        Self(setting)
-    }
-
-    pub fn is_on(self) -> bool {
-        self.0 == StampSetting::On
-    }
+pub enum StepCompletion {
+    /// The stamp is on: the step waits at `approved` for its stamp.
+    AtStamp,
+    /// The stamp is off: the step is done at approval.
+    AtApproval,
 }
 
+/// Why a stamp may not be issued.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum StampRefused {
+pub enum StampError {
     /// The step isn't approved yet (E2). `pending` lists the criteria that haven't passed in its
     /// latest report, or all of them when there is no report.
     NotApproved { pending: Vec<CriterionId> },

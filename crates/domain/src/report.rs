@@ -1,5 +1,5 @@
 //! An agent's report on a step, and what it leads to. `Progress::submit` checks a report and
-//! returns a `ReportOutcome` when it is recorded, or a `ReportRefused` when it isn't.
+//! returns a `Submitted` when it is recorded, or a `SubmitError` when it isn't.
 
 use shared::text::NonBlankString;
 
@@ -27,28 +27,57 @@ impl HandoffNote {
     }
 }
 
-/// Pass or fail for each of a step's criteria, with no evidence (ADR 0006 #4).
+/// The report an agent sends: pass or fail for each of a step's criteria, with no evidence
+/// (ADR 0006 #4). Nothing about it is checked until `Progress::submit`.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Report {
+pub struct SubmitReport {
     pub step: StepId,
     pub verdicts: Vec<(CriterionId, Verdict)>,
     pub handoff_note: Option<HandoffNote>,
 }
 
-/// What a recorded report did to its step.
+/// A report `Progress::submit` accepted. Its verdicts cover exactly the step's criteria, once each.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ReportOutcome {
-    /// Recorded; the agent stops and tells the person. Listed in the step's criteria order.
-    Failed { failed: Vec<CriterionId> },
-    /// Every criterion passed and the stamp is on: the step waits for a stamp.
-    Approved,
-    /// Every criterion passed and the stamp is off: the step is done and `next` is open, if any.
-    Done { next: Option<StepId> },
+pub struct StepReport {
+    step: StepId,
+    verdicts: Vec<(CriterionId, Verdict)>,
+    handoff_note: Option<HandoffNote>,
 }
 
-/// A report that isn't recorded at all.
+impl StepReport {
+    pub(crate) fn accept(report: SubmitReport) -> Self {
+        Self { step: report.step, verdicts: report.verdicts, handoff_note: report.handoff_note }
+    }
+
+    pub fn step(&self) -> &StepId {
+        &self.step
+    }
+
+    pub fn verdicts(&self) -> &[(CriterionId, Verdict)] {
+        &self.verdicts
+    }
+
+    pub fn handoff_note(&self) -> Option<&HandoffNote> {
+        self.handoff_note.as_ref()
+    }
+}
+
+/// What an accepted report did to its step.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ReportRefused {
+pub enum Submitted {
+    /// Some criteria failed; the agent stops and tells the person. Listed in the step's criteria
+    /// order.
+    StepStillOpen { failed: Vec<CriterionId> },
+    /// Every criterion passed and the step completes at its stamp: it waits for one.
+    StepApproved,
+    /// Every criterion passed and the step completes at approval: it is done and `next` is open,
+    /// if any.
+    StepDone { next: Option<StepId> },
+}
+
+/// Why a report wasn't recorded at all.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SubmitError {
     /// The project has no such step.
     UnknownStep(StepId),
     /// The reported step isn't the open one (E1). `open` is the step that is, if any.
