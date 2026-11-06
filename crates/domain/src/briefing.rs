@@ -61,8 +61,9 @@ impl Briefing {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixtures::{all_pass, bike_registration, step_id, text};
     use crate::stamp::StepCompletion::{AtApproval, AtStamp};
+    use crate::testkit::builders::{step_id, text};
+    use crate::testkit::fixtures::{all_pass, bike_registration};
 
     #[test]
     fn a_new_player_is_briefed_on_the_first_step() {

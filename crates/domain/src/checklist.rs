@@ -50,8 +50,9 @@ impl Checklist {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixtures::{all_pass, bike_registration, step_id, text};
     use crate::stamp::StepCompletion::{AtApproval, AtStamp};
+    use crate::testkit::builders::{criterion_id, step_id, text};
+    use crate::testkit::fixtures::{all_pass, bike_registration};
 
     #[test]
     fn the_open_step_is_listed_without_hints() {
@@ -62,12 +63,12 @@ mod tests {
             checklist.items,
             vec![
                 ChecklistItem {
-                    criterion: CriterionId::new("reads-rules").expect("not blank"),
+                    criterion: criterion_id("reads-rules"),
                     title: text("reads-rules title"),
                     instructions: text("check reads-rules"),
                 },
                 ChecklistItem {
-                    criterion: CriterionId::new("lists-fields").expect("not blank"),
+                    criterion: criterion_id("lists-fields"),
                     title: text("lists-fields title"),
                     instructions: text("check lists-fields"),
                 },

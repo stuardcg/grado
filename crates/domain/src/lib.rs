@@ -10,4 +10,4 @@ pub mod settings;
 pub mod stamp;
 
 #[cfg(test)]
-mod fixtures;
+mod testkit;

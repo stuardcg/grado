@@ -86,36 +86,7 @@ impl Project {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn text(value: &str) -> NonBlankString {
-        NonBlankString::new(value).expect("test text isn't blank")
-    }
-
-    fn step_id(value: &str) -> StepId {
-        StepId::new(value).expect("test ids aren't blank")
-    }
-
-    fn criterion_id(value: &str) -> CriterionId {
-        CriterionId::new(value).expect("test ids aren't blank")
-    }
-
-    fn criterion(id: &str) -> Criterion {
-        Criterion {
-            id: criterion_id(id),
-            title: text(&format!("{id} title")),
-            instructions: text(&format!("check {id}")),
-            hint: text(&format!("{id} hint")),
-        }
-    }
-
-    fn step(id: &str, criteria: &[&str]) -> Step {
-        Step {
-            id: step_id(id),
-            title: text(&format!("{id} title")),
-            guide: text(&format!("{id} guide")),
-            criteria: criteria.iter().map(|c| criterion(c)).collect(),
-        }
-    }
+    use crate::testkit::builders::{criterion_id, step, step_id, text};
 
     fn project(steps: Vec<Step>) -> Result<Project, ProjectError> {
         let id = ProjectId::new("bike-registration").expect("test ids aren't blank");

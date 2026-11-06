@@ -180,62 +180,11 @@ fn not_passed(expected: &[CriterionId], verdicts: &[(CriterionId, Verdict)]) -> 
 
 #[cfg(test)]
 mod tests {
-    use shared::text::NonBlankString;
-
     use super::*;
-    use crate::project::{Criterion, Step};
     use crate::report::Verdict::{Fail, Pass};
     use crate::stamp::StepCompletion::{AtApproval, AtStamp};
-
-    fn id(value: &str) -> StepId {
-        StepId::new(value).expect("test ids aren't blank")
-    }
-
-    fn cid(value: &str) -> CriterionId {
-        CriterionId::new(value).expect("test ids aren't blank")
-    }
-
-    fn text(value: &str) -> NonBlankString {
-        NonBlankString::new(value).expect("test text isn't blank")
-    }
-
-    fn step(step: &str, criteria: &[&str]) -> Step {
-        Step {
-            id: id(step),
-            title: text(step),
-            guide: text(&format!("Why {step} matters")),
-            criteria: criteria
-                .iter()
-                .map(|c| Criterion {
-                    id: cid(c),
-                    title: text(c),
-                    instructions: text(&format!("Check {c}")),
-                    hint: text(&format!("Try {c}")),
-                })
-                .collect(),
-        }
-    }
-
-    /// `investigate` (reads-rules, lists-fields), then `plan` (has-plan, plan-reviewed).
-    fn bike_registration() -> Project {
-        Project::new(
-            ProjectId::new("bike-registration").expect("test ids aren't blank"),
-            text("Bike registration"),
-            vec![
-                step("investigate", &["reads-rules", "lists-fields"]),
-                step("plan", &["has-plan", "plan-reviewed"]),
-            ],
-        )
-        .expect("valid project")
-    }
-
-    fn report(step: &str, verdicts: &[(&str, Verdict)], note: Option<&str>) -> SubmitReport {
-        SubmitReport {
-            step: id(step),
-            verdicts: verdicts.iter().map(|(c, v)| (cid(c), *v)).collect(),
-            handoff_note: note.and_then(HandoffNote::new),
-        }
-    }
+    use crate::testkit::builders::{criterion_id, report, step_id};
+    use crate::testkit::fixtures::bike_registration;
 
     fn all_pass(note: Option<&str>) -> SubmitReport {
         report("investigate", &[("reads-rules", Pass), ("lists-fields", Pass)], note)
@@ -244,10 +193,10 @@ mod tests {
     #[test]
     fn starting_opens_the_first_step_only() {
         let progress = Progress::start(&bike_registration());
-        assert_eq!(progress.state(&id("investigate")), Some(StepState::Open));
-        assert_eq!(progress.state(&id("plan")), Some(StepState::Locked));
-        assert_eq!(progress.current_step(), Some(&id("investigate")));
-        assert_eq!(progress.next_step(), Some(&id("plan")));
+        assert_eq!(progress.state(&step_id("investigate")), Some(StepState::Open));
+        assert_eq!(progress.state(&step_id("plan")), Some(StepState::Locked));
+        assert_eq!(progress.current_step(), Some(&step_id("investigate")));
+        assert_eq!(progress.next_step(), Some(&step_id("plan")));
         assert_eq!(progress.last_handoff_note(), None);
     }
 
@@ -259,10 +208,10 @@ mod tests {
 
         let outcome = progress.submit(&project, failing.clone(), AtApproval);
 
-        assert_eq!(outcome, Ok(Submitted::StepStillOpen { failed: vec![cid("lists-fields")] }));
-        assert_eq!(progress.state(&id("investigate")), Some(StepState::Open));
+        assert_eq!(outcome, Ok(Submitted::StepStillOpen { failed: vec![criterion_id("lists-fields")] }));
+        assert_eq!(progress.state(&step_id("investigate")), Some(StepState::Open));
         assert_eq!(
-            progress.latest_report(&id("investigate")).map(StepReport::verdicts),
+            progress.latest_report(&step_id("investigate")).map(StepReport::verdicts),
             Some(&failing.verdicts[..])
         );
     }
@@ -274,10 +223,10 @@ mod tests {
 
         let outcome = progress.submit(&project, all_pass(Some("Fields listed in FIELDS.md")), AtApproval);
 
-        assert_eq!(outcome, Ok(Submitted::StepDone { next: Some(id("plan")) }));
-        assert_eq!(progress.state(&id("investigate")), Some(StepState::Done));
-        assert_eq!(progress.state(&id("plan")), Some(StepState::Open));
-        assert_eq!(progress.current_step(), Some(&id("plan")));
+        assert_eq!(outcome, Ok(Submitted::StepDone { next: Some(step_id("plan")) }));
+        assert_eq!(progress.state(&step_id("investigate")), Some(StepState::Done));
+        assert_eq!(progress.state(&step_id("plan")), Some(StepState::Open));
+        assert_eq!(progress.current_step(), Some(&step_id("plan")));
         assert_eq!(progress.next_step(), None);
         assert_eq!(progress.last_handoff_note().map(HandoffNote::as_str), Some("Fields listed in FIELDS.md"));
     }
@@ -290,9 +239,9 @@ mod tests {
         let outcome = progress.submit(&project, all_pass(Some("Done")), AtStamp);
 
         assert_eq!(outcome, Ok(Submitted::StepApproved));
-        assert_eq!(progress.state(&id("investigate")), Some(StepState::Approved));
-        assert_eq!(progress.state(&id("plan")), Some(StepState::Locked));
-        assert_eq!(progress.current_step(), Some(&id("investigate")));
+        assert_eq!(progress.state(&step_id("investigate")), Some(StepState::Approved));
+        assert_eq!(progress.state(&step_id("plan")), Some(StepState::Locked));
+        assert_eq!(progress.current_step(), Some(&step_id("investigate")));
     }
 
     #[test]
@@ -332,7 +281,7 @@ mod tests {
 
         let outcome = progress.submit(&project, all_pass(Some("Again")), AtApproval);
 
-        assert_eq!(outcome, Err(SubmitError::StepNotOpen { open: Some(id("plan")) }));
+        assert_eq!(outcome, Err(SubmitError::StepNotOpen { open: Some(step_id("plan")) }));
     }
 
     #[test]
@@ -342,7 +291,7 @@ mod tests {
 
         let outcome = progress.submit(&project, report("deploy", &[("reads-rules", Pass)], None), AtApproval);
 
-        assert_eq!(outcome, Err(SubmitError::UnknownStep(id("deploy"))));
+        assert_eq!(outcome, Err(SubmitError::UnknownStep(step_id("deploy"))));
         assert_eq!(progress, Progress::start(&project));
     }
 
@@ -350,8 +299,9 @@ mod tests {
     fn verdicts_must_cover_exactly_the_steps_criteria() {
         let project = bike_registration();
         let mut progress = Progress::start(&project);
-        let expected =
-            Err(SubmitError::CriteriaMismatch { expected: vec![cid("reads-rules"), cid("lists-fields")] });
+        let expected = Err(SubmitError::CriteriaMismatch {
+            expected: vec![criterion_id("reads-rules"), criterion_id("lists-fields")],
+        });
 
         let missing = report("investigate", &[("reads-rules", Pass)], Some("note"));
         let foreign = report("investigate", &[("reads-rules", Pass), ("has-plan", Pass)], Some("note"));
@@ -374,22 +324,24 @@ mod tests {
         let mut progress = Progress::start(&project);
         progress.submit(&project, all_pass(Some("Done")), AtStamp).expect("approved");
 
-        assert_eq!(progress.stamp_allowed(&project, &id("investigate"), AtStamp), Ok(()));
+        assert_eq!(progress.stamp_allowed(&project, &step_id("investigate"), AtStamp), Ok(()));
     }
 
     #[test]
     fn a_stamp_before_approval_names_the_criteria_not_passed() {
         let project = bike_registration();
         let mut progress = Progress::start(&project);
-        let not_yet = Err(StampError::NotApproved { pending: vec![cid("reads-rules"), cid("lists-fields")] });
-        assert_eq!(progress.stamp_allowed(&project, &id("investigate"), AtStamp), not_yet);
+        let not_yet = Err(StampError::NotApproved {
+            pending: vec![criterion_id("reads-rules"), criterion_id("lists-fields")],
+        });
+        assert_eq!(progress.stamp_allowed(&project, &step_id("investigate"), AtStamp), not_yet);
 
         let failing = report("investigate", &[("reads-rules", Pass), ("lists-fields", Fail)], None);
         progress.submit(&project, failing, AtStamp).expect("recorded");
 
         assert_eq!(
-            progress.stamp_allowed(&project, &id("investigate"), AtStamp),
-            Err(StampError::NotApproved { pending: vec![cid("lists-fields")] })
+            progress.stamp_allowed(&project, &step_id("investigate"), AtStamp),
+            Err(StampError::NotApproved { pending: vec![criterion_id("lists-fields")] })
         );
     }
 
@@ -400,7 +352,7 @@ mod tests {
         progress.submit(&project, all_pass(Some("Done")), AtApproval).expect("done");
 
         assert_eq!(
-            progress.stamp_allowed(&project, &id("investigate"), AtApproval),
+            progress.stamp_allowed(&project, &step_id("investigate"), AtApproval),
             Err(StampError::StampOff)
         );
     }
@@ -411,8 +363,8 @@ mod tests {
         let progress = Progress::start(&project);
 
         assert_eq!(
-            progress.stamp_allowed(&project, &id("deploy"), AtStamp),
-            Err(StampError::UnknownStep(id("deploy")))
+            progress.stamp_allowed(&project, &step_id("deploy"), AtStamp),
+            Err(StampError::UnknownStep(step_id("deploy")))
         );
     }
 }
