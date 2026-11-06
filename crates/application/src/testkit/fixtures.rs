@@ -3,7 +3,8 @@
 
 use domain::player::PlayerId;
 use domain::progress::Progress;
-use domain::project::{Criterion, Project, Step, StepId};
+use domain::project::{Criterion, CriterionId, Project, Step, StepId};
+use domain::report::{HandoffNote, SubmitReport, Verdict};
 use domain::settings::GameSettings;
 use domain::stamp::StampSetting;
 use shared::id::Id;
@@ -78,12 +79,32 @@ pub fn started() -> Progress {
     Progress::start(&project())
 }
 
+/// A report passing every criterion of `step`, with a handoff note.
+pub fn all_pass(step: &StepId) -> SubmitReport {
+    SubmitReport {
+        step: step.clone(),
+        verdicts: verdicts(step, Verdict::Pass),
+        handoff_note: HandoffNote::new("Ready for the next step."),
+    }
+}
+
+/// A report failing every criterion of `step`, with no note.
+pub fn all_fail(step: &StepId) -> SubmitReport {
+    SubmitReport { step: step.clone(), verdicts: verdicts(step, Verdict::Fail), handoff_note: None }
+}
+
 pub fn stamp_on() -> GameSettings {
     GameSettings { stamp: StampSetting::On }
 }
 
 pub fn stamp_off() -> GameSettings {
     GameSettings { stamp: StampSetting::Off }
+}
+
+fn verdicts(step: &StepId, verdict: Verdict) -> Vec<(CriterionId, Verdict)> {
+    let project = project();
+    let step = project.step(step).expect("a step of the fixture project");
+    step.criteria.iter().map(|criterion| (criterion.id.clone(), verdict)).collect()
 }
 
 fn step(step_id: &str, title: &str, guide: &str, criteria: [Criterion; 2]) -> Step {

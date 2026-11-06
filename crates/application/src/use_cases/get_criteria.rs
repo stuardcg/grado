@@ -56,7 +56,6 @@ pub async fn run(
 
 #[cfg(test)]
 mod tests {
-    use domain::report::{HandoffNote, SubmitReport, Verdict};
     use domain::stamp::StepCompletion;
 
     use super::*;
@@ -86,14 +85,10 @@ mod tests {
     async fn an_approved_step_has_no_criteria_to_check() {
         let project = fixtures::project();
         let catalog = FakeCatalog::new(vec![project.clone()]);
-        let step = project.step(&fixtures::first_step()).expect("the first step");
         let mut progress = fixtures::started();
-        let report = SubmitReport {
-            step: step.id.clone(),
-            verdicts: step.criteria.iter().map(|criterion| (criterion.id.clone(), Verdict::Pass)).collect(),
-            handoff_note: HandoffNote::new("Habits are stored in SQLite."),
-        };
-        progress.submit(&project, report, StepCompletion::AtStamp).expect("approved");
+        progress
+            .submit(&project, fixtures::all_pass(&fixtures::first_step()), StepCompletion::AtStamp)
+            .expect("approved");
         let store = FakeProgress::new();
         store.save(&fixtures::player(), &progress, None).await.expect("first save");
 

@@ -4,4 +4,6 @@
 pub mod authenticate_agent_connection;
 pub mod get_briefing;
 pub mod get_criteria;
+pub mod issue_stamp;
 pub mod list_my_projects;
+pub mod submit_report;
