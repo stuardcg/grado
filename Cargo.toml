@@ -14,3 +14,6 @@ domain = { path = "crates/domain" }
 application = { path = "crates/application" }
 inbound-mcp = { path = "crates/inbound-mcp" }
 outbound-memory = { path = "crates/outbound-memory" }
+async-trait = "0.1"
+tokio = { version = "1", features = ["macros", "rt"] }
+uuid = { version = "1", features = ["v4"] }
