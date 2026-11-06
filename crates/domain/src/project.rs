@@ -70,8 +70,8 @@ impl Project {
         &self.id
     }
 
-    pub fn title(&self) -> &str {
-        self.title.as_str()
+    pub fn title(&self) -> &NonBlankString {
+        &self.title
     }
 
     pub fn steps(&self) -> &[Step] {

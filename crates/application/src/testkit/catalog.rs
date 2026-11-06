@@ -2,7 +2,6 @@
 
 use async_trait::async_trait;
 use domain::project::{Project, ProjectId};
-use shared::text::NonBlankString;
 
 use super::fixtures;
 use crate::ports::PortError;
@@ -30,8 +29,7 @@ pub async fn suite<C: Catalog>(make: impl Fn(Vec<Project>) -> C) {
 
 fn renamed(project: &Project, id: &str) -> Project {
     let id = ProjectId::new(id).expect("not blank");
-    let title = NonBlankString::new(project.title()).expect("not blank");
-    Project::new(id, title, project.steps().to_vec()).expect("same steps, so still valid")
+    Project::new(id, project.title().clone(), project.steps().to_vec()).expect("same steps, so still valid")
 }
 
 fn ids(projects: &[Project]) -> Vec<ProjectId> {

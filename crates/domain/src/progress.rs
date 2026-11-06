@@ -145,7 +145,8 @@ impl Progress {
         self.steps.iter().position(|entry| matches!(entry.state, StepState::Open | StepState::Approved))
     }
 
-    fn open_step(&self) -> Option<&StepId> {
+    /// The step that takes a report, if one is open.
+    pub fn open_step(&self) -> Option<&StepId> {
         self.steps.iter().find(|entry| entry.state == StepState::Open).map(|entry| &entry.step)
     }
 
