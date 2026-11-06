@@ -2,7 +2,8 @@
 
 One file per architectural decision, numbered in order. Accepted records are not edited; a later
 record supersedes them. Discussion happens in the linked Linear ticket; the record keeps only the
-outcome.
+outcome. The rules in force are listed in [`../rules.md`](../rules.md), which a new or superseding
+record updates in the same pull request.
 
 | # | Decision | Status |
 |---|---|---|
