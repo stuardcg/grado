@@ -6,6 +6,7 @@ Every rule in force, one line each, for building and reviewing. Read the section
 
 - Depend only as ADR 0004's crate table allows; add a dependency in the change that first uses it. (0004 #1, #2)
 - Never make one adapter crate depend on another. (0004 #3)
+- Use `tokio` in `application` only as a dev-dependency, to run tests. (0009)
 - Keep `serde` out of `domain`: domain types never cross the wire. (0004 #4)
 - Put a change where ADR 0004's "Where a change goes" table says; if no row fits, write a decision record first. (0004)
 
@@ -38,6 +39,7 @@ Every rule in force, one line each, for building and reviewing. Read the section
 ## Ports and tests
 
 - Define each port as a trait in `application/src/ports/<concern>.rs`, one concern per file, using only `domain` and `application` types. (0004 #10)
+- Write ports as async traits with `async-trait`; use cases take them as `&dyn Port`. (0009)
 - Give each port one suite and one fake in `application/src/testkit/<concern>.rs`; run the suite against the fake and every `outbound-*` implementation. (0004 #11)
 - Refuse a save when the state changed since it was loaded, and test that refusal in the port's suite. (0004 #25)
 - Write use-case tests in the use case's file, on testkit fakes, never on an adapter. (0004 "Tests")
