@@ -30,6 +30,7 @@ Every rule in force, one line each, for building and reviewing. Read the section
 - Use no numeric or duration literals other than `0` and `1` in `application`. (0004 #9)
 - Take a `PlayerId` in `Input`, never a token or session, unless the use case is authentication. (0004 #24)
 - Keep `application/src/` to `lib.rs`, `ports/`, `use_cases/` and `testkit/`. (0004 #21)
+- Give each use case one method on `Grado`, the application handle in `application/src/lib.rs`, that only forwards to its `run`. (0010)
 
 ## Errors
 
@@ -47,12 +48,13 @@ Every rule in force, one line each, for building and reviewing. Read the section
 
 ## Adapters
 
-- Call only use cases from inbound adapters, never ports. (0004 #14)
+- Call use cases from inbound adapters only through `Grado`; never import `application::ports`. (0004 #14, 0010)
 - Expose use cases in one file per inbound crate: `inbound-<transport>/src/bindings.rs`. (0004 #15)
 - Authenticate first in each inbound adapter (for MCP, `authenticate_agent_connection`) and pass the `PlayerId` on. (0004 #24)
 - Only implement ports in outbound adapters; branch only on the technology (encoding, errors, retries, pagination). (0004 #16)
 - Keep every numeric or duration literal in an adapter in a named `const`. (0004 #9)
 - Only build adapters and start a runtime in `app`, one file per runtime in `app/src/bin/`. (0004 #17)
+- Choose adapters only in the composition root, `app/src/bin/<runtime>.rs`: build the outbound adapters, build `Grado` from them, and hand it to the inbound adapters. (0010)
 - Serve one router from two thin entry points, a Lambda binary and a plain server; no API Gateway. (0003)
 
 ## Shared code

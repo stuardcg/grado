@@ -16,6 +16,7 @@ record updates in the same pull request.
 | [0007](0007-non-blank-values.md) | Ids and readable text are never blank | Accepted |
 | [0008](0008-domain-type-names.md) | Domain type names | Accepted |
 | [0009](0009-async-ports.md) | Async ports | Accepted |
+| [0010](0010-application-handle.md) | Application handle | Accepted |
 
 ## Template
 
