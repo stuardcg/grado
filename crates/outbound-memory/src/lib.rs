@@ -14,5 +14,5 @@ use application::ports::PortError;
 
 /// A poisoned lock means another request panicked mid-write, so the data can't be trusted.
 fn lock<T>(mutex: &Mutex<T>) -> Result<MutexGuard<'_, T>, PortError> {
-    mutex.lock().map_err(|_| PortError::Unavailable)
+    mutex.lock().map_err(|error| PortError::unavailable(error.to_string()))
 }

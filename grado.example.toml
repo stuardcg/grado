@@ -10,6 +10,17 @@
 # GRADO_ADDR
 addr = "127.0.0.1:8080"
 
+[log]
+
+# Which events are written: a tracing filter, such as `info`, `warn` or `info,inbound_mcp=debug`.
+# `rmcp=warn` quiets the MCP library's three info lines per request.
+# GRADO_LOG__LEVEL
+level = "info,rmcp=warn"
+
+# `json`: one JSON object per line, for CloudWatch. `pretty`: readable text, for a terminal.
+# GRADO_LOG__FORMAT
+format = "pretty"
+
 # Dev only: the sample data the server runs on until content and sign-in are decided. This section
 # goes away with STU-27 (content) and STU-29 (sign-in).
 [dev]

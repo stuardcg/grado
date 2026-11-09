@@ -38,6 +38,8 @@ impl Server {
         let server = Self {
             child: server()
                 .env("GRADO_ADDR", &addr)
+                .env("GRADO_LOG__LEVEL", "off")
+                .env("GRADO_LOG__FORMAT", "json")
                 .env("GRADO_DEV__AGENT_TOKEN", TOKEN)
                 .env("GRADO_DEV__STAMP", stamp)
                 .spawn()
@@ -181,7 +183,7 @@ fn the_server_wont_start_on_an_incomplete_configuration() {
     let output = server().env("GRADO_DEV__STAMP", "yes").output().expect("the server runs");
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.contains("has 3 problems"), "{stderr}");
+    assert!(stderr.contains("has 5 problems"), "{stderr}");
     assert!(stderr.contains("addr (GRADO_ADDR): missing"), "{stderr}");
 }
 

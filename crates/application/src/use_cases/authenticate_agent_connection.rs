@@ -60,11 +60,11 @@ mod tests {
         #[async_trait]
         impl AgentConnections for Down {
             async fn player(&self, _: &AgentToken) -> Result<Option<PlayerId>, PortError> {
-                Err(PortError::Unavailable)
+                Err(PortError::unavailable("the store is down"))
             }
         }
 
         let output = run(&Down, Input { token: fixtures::token() }).await;
-        assert_eq!(output, Err(Error::Port(PortError::Unavailable)));
+        assert!(matches!(output, Err(Error::Port(PortError::Unavailable(_)))));
     }
 }

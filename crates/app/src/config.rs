@@ -11,6 +11,7 @@ use domain::stamp::StampSetting;
 use figment::providers::{Env, Format, Serialized, Toml};
 use figment::value::{Dict, Value};
 use figment::{Figment, Provider};
+use tracing_subscriber::EnvFilter;
 
 /// The file read from the working directory, when it's there.
 pub const FILE: &str = "grado.toml";
@@ -22,7 +23,24 @@ const ENV_NESTING: &str = "__";
 pub struct Config {
     /// `addr`: the address the local server listens on.
     pub addr: SocketAddr,
+    pub log: LogConfig,
     pub dev: DevConfig,
+}
+
+/// `log`: what is logged and how it's written (ADR 0012).
+pub struct LogConfig {
+    /// `log.level`: which events are written, as a `tracing` filter.
+    pub level: EnvFilter,
+    /// `log.format`: how each event is written.
+    pub format: LogFormat,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LogFormat {
+    /// One JSON object per line, for CloudWatch.
+    Json,
+    /// Readable text, for a terminal.
+    Pretty,
 }
 
 /// `dev`: the sample data's settings. Dev only; they go away with STU-27 and STU-29.
@@ -55,14 +73,27 @@ impl Config {
         let mut settings = Reader::new(figment)?;
         let addr =
             settings.read("addr", "a socket address, such as 127.0.0.1:8080", |text| text.parse().ok());
+        let level = settings
+            .read("log.level", "a tracing filter, such as info", |text| EnvFilter::try_new(text).ok());
+        let format = settings.read("log.format", "json or pretty", log_format);
         let agent_token = settings.read("dev.agent_token", "a token that isn't blank", AgentToken::new);
         let stamp = settings.read("dev.stamp", "on or off", stamp);
         settings.finish()?;
 
-        let (Some(addr), Some(agent_token), Some(stamp)) = (addr, agent_token, stamp) else {
+        let (Some(addr), Some(level), Some(format), Some(agent_token), Some(stamp)) =
+            (addr, level, format, agent_token, stamp)
+        else {
             unreachable!("a setting that wasn't read is a problem, so `finish` returned it");
         };
-        Ok(Self { addr, dev: DevConfig { agent_token, stamp } })
+        Ok(Self { addr, log: LogConfig { level, format }, dev: DevConfig { agent_token, stamp } })
+    }
+}
+
+fn log_format(text: String) -> Option<LogFormat> {
+    match text.as_str() {
+        "json" => Some(LogFormat::Json),
+        "pretty" => Some(LogFormat::Pretty),
+        _ => None,
     }
 }
 
@@ -222,6 +253,8 @@ mod tests {
             jail.create_file(FILE, EXAMPLE).unwrap();
             let config = Config::from_env().expect("the example loads");
             assert_eq!(config.addr, "127.0.0.1:8080".parse().unwrap());
+            assert_eq!(config.log.level.to_string(), "rmcp=warn,info");
+            assert_eq!(config.log.format, LogFormat::Pretty);
             assert_eq!(config.dev.agent_token, AgentToken::new("dev-token").unwrap());
             assert_eq!(config.dev.stamp, StampSetting::Off);
         });
@@ -231,10 +264,13 @@ mod tests {
     fn the_environment_alone_is_enough() {
         jail(|jail| {
             jail.set_env("GRADO_ADDR", "127.0.0.1:9000");
+            jail.set_env("GRADO_LOG__LEVEL", "warn");
+            jail.set_env("GRADO_LOG__FORMAT", "json");
             jail.set_env("GRADO_DEV__AGENT_TOKEN", "token");
             jail.set_env("GRADO_DEV__STAMP", "on");
             let config = Config::from_env().expect("the environment loads");
             assert_eq!(config.addr, "127.0.0.1:9000".parse().unwrap());
+            assert_eq!(config.log.format, LogFormat::Json);
             assert_eq!(config.dev.stamp, StampSetting::On);
         });
     }
@@ -258,6 +294,8 @@ mod tests {
                 problems(Config::from_env()),
                 [
                     Problem::Invalid { key: "addr", expected: "a socket address, such as 127.0.0.1:8080" },
+                    Problem::Missing("log.level"),
+                    Problem::Missing("log.format"),
                     Problem::Missing("dev.agent_token"),
                     Problem::Invalid { key: "dev.stamp", expected: "on or off" },
                     Problem::Unknown("dev.stmp".into()),

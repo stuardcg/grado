@@ -1,10 +1,12 @@
 //! The MCP tools, one per use case, written by hand until STU-25 decides how bindings are made
 //! (ADR 0004 rule 15). Each tool authenticates the connection first and runs its use case for the
 //! player it acts for (rule 24). Every caller-facing sentence is written here, in one exhaustive
-//! `match` per use case `Error` (rule 13).
+//! `match` per use case `Error` (rule 13). Each tool call runs in one span, opened in `call_tool`,
+//! and a port failure is logged once, in `unavailable` (ADR 0012).
 
 use std::sync::Arc;
 
+use application::ports::PortError;
 use application::use_cases::{
     authenticate_agent_connection, get_briefing, get_criteria, issue_stamp, list_my_projects, submit_report,
 };
@@ -16,13 +18,20 @@ use domain::report::{HandoffNote, SubmitReport, Submitted, Verdict};
 use http::header::AUTHORIZATION;
 use http::request::Parts;
 use rmcp::handler::server::router::tool::ToolRouter;
-use rmcp::handler::server::tool::Extension;
+use rmcp::handler::server::tool::{Extension, ToolCallContext};
 use rmcp::handler::server::wrapper::Parameters;
-use rmcp::model::{CallToolResult, ContentBlock, Implementation, ServerCapabilities, ServerConfig};
-use rmcp::{ErrorData, ServerHandler, tool, tool_handler, tool_router};
+use rmcp::model::{
+    CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock, Implementation,
+    ServerCapabilities, ServerConfig,
+};
+use rmcp::service::RequestContext;
+use rmcp::{ErrorData, RoleServer, ServerHandler, tool, tool_handler, tool_router};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shared::id::Id;
+use tracing::Instrument;
+
+use crate::REQUEST_ID;
 
 const INSTRUCTIONS: &str = "Grado guides a person through a project one step at a time. Start with \
     list_my_projects to find the project you're working on; if your location, codebase or context \
@@ -160,7 +169,7 @@ impl Tools {
                 "The person started project {}, but it's no longer available. Tell the person.",
                 project.as_str()
             )),
-            Err(list_my_projects::Error::Port(_)) => unavailable(),
+            Err(list_my_projects::Error::Port(error)) => unavailable(error),
         }
     }
 
@@ -218,7 +227,7 @@ impl Tools {
             }
             Err(get_briefing::Error::UnknownProject(project)) => unknown_project(&project),
             Err(get_briefing::Error::NotStarted(project)) => not_started(&project),
-            Err(get_briefing::Error::Port(_)) => unavailable(),
+            Err(get_briefing::Error::Port(error)) => unavailable(error),
         }
     }
 
@@ -262,7 +271,7 @@ impl Tools {
             Err(get_criteria::Error::NoOpenStep { current: None }) => {
                 refuse("No step takes a report: every step of this project is done.")
             }
-            Err(get_criteria::Error::Port(_)) => unavailable(),
+            Err(get_criteria::Error::Port(error)) => unavailable(error),
         }
     }
 
@@ -348,7 +357,7 @@ impl Tools {
                 "Another connection changed this project at the same time, so the report wasn't recorded. \
                  Call get_briefing, then send the report again if it still applies.",
             ),
-            Err(submit_report::Error::Port(_)) => unavailable(),
+            Err(submit_report::Error::Port(error)) => unavailable(error),
         }
     }
 
@@ -384,7 +393,7 @@ impl Tools {
             Err(issue_stamp::Error::StampOff) => {
                 refuse("This project doesn't use stamps: a step is done as soon as its report passes.")
             }
-            Err(issue_stamp::Error::Port(_)) => unavailable(),
+            Err(issue_stamp::Error::Port(error)) => unavailable(error),
         }
     }
 
@@ -400,15 +409,36 @@ impl Tools {
             return Err(no_connection());
         };
         match self.grado.authenticate_agent_connection(authenticate_agent_connection::Input { token }).await {
-            Ok(output) => Ok(output.player),
+            Ok(output) => {
+                tracing::Span::current().record("player", output.player.as_str());
+                Ok(output.player)
+            }
             Err(authenticate_agent_connection::Error::NoActiveConnection) => Err(no_connection()),
-            Err(authenticate_agent_connection::Error::Port(_)) => Err(unavailable()),
+            Err(authenticate_agent_connection::Error::Port(error)) => Err(unavailable(error)),
         }
     }
 }
 
 #[tool_handler(router = self.tool_router)]
 impl ServerHandler for Tools {
+    /// Runs every tool call in one span: its request id, the tool's name and, once
+    /// authenticated, the player.
+    async fn call_tool(
+        &self,
+        request: CallToolRequestParams,
+        context: RequestContext<RoleServer>,
+    ) -> Result<CallToolResponse, ErrorData> {
+        let request_id = context
+            .extensions
+            .get::<Parts>()
+            .and_then(|parts| parts.headers.get(REQUEST_ID))
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or_default()
+            .to_owned();
+        let span = tracing::info_span!("tool_call", request_id, tool = %request.name, player = tracing::field::Empty);
+        self.tool_router.call(ToolCallContext::new(self, request, context)).instrument(span).await
+    }
+
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new("grado", env!("CARGO_PKG_VERSION")))
@@ -422,8 +452,10 @@ fn id<T>(value: String, name: &str) -> Result<Id<T>, Reply> {
 }
 
 fn json(response: &impl Serialize) -> Reply {
-    let value = serde_json::to_value(response)
-        .map_err(|_| ErrorData::internal_error("the response couldn't be encoded", None))?;
+    let value = serde_json::to_value(response).map_err(|error| {
+        tracing::error!(cause = %error, "a response couldn't be encoded");
+        ErrorData::internal_error("the response couldn't be encoded", None)
+    })?;
     Ok(CallToolResult::structured(value))
 }
 
@@ -431,7 +463,9 @@ fn refuse(message: impl Into<String>) -> Reply {
     Ok(CallToolResult::error(vec![ContentBlock::text(message)]))
 }
 
-fn unavailable() -> Reply {
+/// The one place a port failure is logged. The caller sees none of its cause.
+fn unavailable(error: PortError) -> Reply {
+    tracing::error!(cause = %error, "a port failed");
     Err(ErrorData::internal_error("Grado is unavailable right now", None))
 }
 
@@ -471,5 +505,52 @@ fn state(state: StepState) -> &'static str {
         StepState::Approved => "approved",
         StepState::Done => "done",
         StepState::Skipped => "skipped",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io;
+    use std::sync::Mutex;
+
+    use super::*;
+
+    /// Keeps what a subscriber writes, to read it back.
+    #[derive(Clone, Default)]
+    struct Written(Arc<Mutex<Vec<u8>>>);
+
+    impl io::Write for Written {
+        fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(bytes);
+            Ok(bytes.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for Written {
+        type Writer = Self;
+
+        fn make_writer(&'a self) -> Self::Writer {
+            self.clone()
+        }
+    }
+
+    #[test]
+    fn a_port_failure_is_logged_once_with_its_cause_and_the_caller_sees_none_of_it() {
+        let written = Written::default();
+        let subscriber = tracing_subscriber::fmt().with_writer(written.clone()).with_ansi(false).finish();
+
+        let reply = tracing::subscriber::with_default(subscriber, || {
+            unavailable(PortError::unavailable("connection refused"))
+        });
+
+        let log = String::from_utf8(written.0.lock().unwrap().clone()).unwrap();
+        assert_eq!(log.matches("a port failed").count(), 1, "{log}");
+        assert!(log.contains("connection refused"), "{log}");
+        let error = reply.expect_err("a protocol error");
+        assert_eq!(error.message, "Grado is unavailable right now");
     }
 }
