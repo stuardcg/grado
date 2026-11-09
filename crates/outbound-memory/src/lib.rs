@@ -4,6 +4,7 @@
 pub mod agent_connections;
 pub mod catalog;
 pub mod progress;
+pub mod sample;
 pub mod settings;
 pub mod stamp_codes;
 

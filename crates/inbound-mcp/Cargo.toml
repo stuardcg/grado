@@ -7,5 +7,11 @@ publish.workspace = true
 
 [dependencies]
 application.workspace = true
+axum.workspace = true
 domain.workspace = true
+http.workspace = true
+rmcp.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 shared.workspace = true
