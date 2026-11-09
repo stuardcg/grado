@@ -53,9 +53,16 @@ Every rule in force, one line each, for building and reviewing. Read the section
 - Authenticate first in each inbound adapter (for MCP, `authenticate_agent_connection`) and pass the `PlayerId` on. (0004 #24)
 - Only implement ports in outbound adapters; branch only on the technology (encoding, errors, retries, pagination). (0004 #16)
 - Keep every numeric or duration literal in an adapter in a named `const`. (0004 #9)
-- Only build adapters and start a runtime in `app`, one file per runtime in `app/src/bin/`. (0004 #17)
+- Only build adapters, load configuration and start a runtime in `app`: one file per runtime in `app/src/bin/`, configuration in `app/src/config.rs`. (0004 #17, 0011)
 - Choose adapters only in the composition root, `app/src/bin/<runtime>.rs`: build the outbound adapters, build `Grado` from them, and hand it to the inbound adapters. (0010)
 - Serve one router from two thin entry points, a Lambda binary and a plain server; no API Gateway. (0003)
+
+## Configuration
+
+- Load configuration only in `app/src/config.rs`, once at startup: `grado.toml`, then `GRADO_*` environment variables; never read the environment anywhere else. (0011)
+- Give every setting a field in `Config`, one read in `config.rs` and an entry in `grado.example.toml`; never a default in code. (0011)
+- Refuse to start on a missing, invalid or unknown setting, listing every problem and never a value. (0011)
+- Hand each adapter only its part of `Config`. (0011)
 
 ## Shared code
 
