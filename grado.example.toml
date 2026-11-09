@@ -1,0 +1,25 @@
+# Every Grado setting. Each one is required, and the server won't start without all of them
+# (ADR 0011). Copy this file to `grado.toml` in the directory you start the server from, or set
+# each value as an environment variable, which wins over the file. A test loads this file, so it
+# lists every setting and nothing else.
+#
+# An environment variable is `GRADO_` plus the key in capitals, with `__` between a section and
+# its key: `dev.agent_token` is `GRADO_DEV__AGENT_TOKEN`. Every value is text, so quote it here.
+
+# The address the local server listens on.
+# GRADO_ADDR
+addr = "127.0.0.1:8080"
+
+# Dev only: the sample data the server runs on until content and sign-in are decided. This section
+# goes away with STU-27 (content) and STU-29 (sign-in).
+[dev]
+
+# The token of the sample player's one agent connection: any text that isn't blank. The agent
+# sends it as `Authorization: Bearer <token>`.
+# GRADO_DEV__AGENT_TOKEN
+agent_token = "dev-token"
+
+# `on`: a step waits at approved until the person enters a stamp.
+# `off`: a step is done at approval.
+# GRADO_DEV__STAMP
+stamp = "off"

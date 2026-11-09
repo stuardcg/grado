@@ -9,12 +9,14 @@ publish.workspace = true
 application.workspace = true
 axum.workspace = true
 domain.workspace = true
+figment.workspace = true
 inbound-mcp.workspace = true
 outbound-memory.workspace = true
 shared.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "net"] }
 
 [dev-dependencies]
+figment = { workspace = true, features = ["test"] }
 rmcp = { workspace = true, features = ["client", "transport-streamable-http-client-reqwest"] }
 serde_json.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "net", "time"] }

@@ -17,6 +17,13 @@ const PROJECT: &str = "reading-list";
 const READY_ATTEMPTS: u32 = 100;
 const READY_WAIT: Duration = Duration::from_millis(50);
 
+/// The server binary, run where no `grado.toml` is, with only the environment the test sets.
+fn server() -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_server"));
+    command.current_dir(env!("CARGO_TARGET_TMPDIR")).env_clear();
+    command
+}
+
 /// The server process, stopped when the test ends.
 struct Server {
     child: Child,
@@ -29,10 +36,10 @@ impl Server {
             TcpListener::bind("127.0.0.1:0").and_then(|listener| listener.local_addr()).unwrap().to_string();
         // Built right away, so `Drop` stops the process even if it never starts listening.
         let server = Self {
-            child: Command::new(env!("CARGO_BIN_EXE_server"))
-                .env("GRADO_DEV_AGENT_TOKEN", TOKEN)
-                .env("GRADO_DEV_STAMP", stamp)
+            child: server()
                 .env("GRADO_ADDR", &addr)
+                .env("GRADO_DEV__AGENT_TOKEN", TOKEN)
+                .env("GRADO_DEV__STAMP", stamp)
                 .spawn()
                 .expect("the server starts"),
             addr,
@@ -167,6 +174,15 @@ async fn with_the_stamp_on_an_approved_step_gets_a_stamp() {
 
     let briefing = agent.ok("get_briefing", json!({ "project": PROJECT })).await;
     assert_eq!(briefing["current"]["state"], "approved");
+}
+
+#[test]
+fn the_server_wont_start_on_an_incomplete_configuration() {
+    let output = server().env("GRADO_DEV__STAMP", "yes").output().expect("the server runs");
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("has 3 problems"), "{stderr}");
+    assert!(stderr.contains("addr (GRADO_ADDR): missing"), "{stderr}");
 }
 
 #[tokio::test(flavor = "multi_thread")]
