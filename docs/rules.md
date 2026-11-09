@@ -64,6 +64,14 @@ Every rule in force, one line each, for building and reviewing. Read the section
 - Refuse to start on a missing, invalid or unknown setting, listing every problem and never a value. (0011)
 - Hand each adapter only its part of `Config`. (0011)
 
+## Logging
+
+- Log only in adapters and `app`, with `tracing`; never in `domain` or `application`. (0012)
+- Log an unexpected failure once, in the inbound adapter where it's mapped to the transport's error, with its cause; outbound adapters return failures without logging them. (0012)
+- Give `PortError` the failure's cause; never drop it with `|_|`. (0012)
+- Open each inbound adapter's span in one place, never in each binding: the request id, the call's name and, once known, the player id. (0012)
+- Never log a token, player-written text or a request body. (0012)
+
 ## Shared code
 
 - Give code used in two or more modules the one home ADR 0004's "Shared code" table gives it. (0004 #18)
