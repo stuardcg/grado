@@ -9,6 +9,7 @@ pub mod testkit;
 
 use std::sync::Arc;
 
+pub use ports::PortError;
 use ports::agent_connections::AgentConnections;
 pub use ports::agent_connections::AgentToken;
 use ports::catalog::Catalog;

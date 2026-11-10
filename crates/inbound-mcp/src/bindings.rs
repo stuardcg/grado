@@ -6,11 +6,10 @@
 
 use std::sync::Arc;
 
-use application::ports::PortError;
 use application::use_cases::{
     authenticate_agent_connection, get_briefing, get_criteria, issue_stamp, list_my_projects, submit_report,
 };
-use application::{AgentToken, Grado};
+use application::{AgentToken, Grado, PortError};
 use domain::player::PlayerId;
 use domain::progress::StepState;
 use domain::project::{CriterionId, ProjectId, StepId};
