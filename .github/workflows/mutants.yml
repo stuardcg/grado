@@ -1,0 +1,30 @@
+# Nightly mutation testing (ADR 0013): cargo-mutants changes the code on purpose and reports each
+# change no test caught. It reports and never blocks; read `mutants.out` in the run's artifacts.
+name: Mutants
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mutants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-mutants
+      - run: cargo mutants --no-shuffle --in-place
+        continue-on-error: true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: mutants.out
+          path: mutants.out

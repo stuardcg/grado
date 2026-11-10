@@ -1,0 +1,22 @@
+# Weekly update PRs for Rust crates and GitHub Actions (ADR 0013). Security updates come as soon
+# as an advisory is published, once Dependabot security updates are on in the repo settings.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      cargo:
+        patterns: ["*"]
+    commit-message:
+      prefix: build
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci

@@ -2,3 +2,4 @@
 .env
 .claude/
 /grado.toml
+/mutants.out*

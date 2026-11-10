@@ -1,0 +1,9 @@
+# committed: checks every commit message in a pull request (ADR 0005, ADR 0013).
+style = "conventional"
+allowed_types = ["build", "chore", "ci", "docs", "feat", "fix", "perf", "refactor", "revert", "style", "test"]
+subject_capitalized = false
+subject_length = 72
+# Bodies are wrapped by hand, and some older ones aren't.
+line_length = 0
+# Pull requests merge by rebase, so a merge commit never belongs in one.
+merge_commit = false
