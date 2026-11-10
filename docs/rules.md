@@ -78,8 +78,17 @@ Every rule in force, one line each, for building and reviewing. Read the section
 - Keep game vocabulary out of `shared`. (0004 #19, #22)
 - Never name a module or file `util`, `utils`, `helper`, `helpers`, `common`, `misc` or `shared` outside `shared`. (0004 #20)
 
-## Commits
+## Testing
+
+- Test `shared` and `domain` in the module; use `proptest` for an invariant that must hold over any sequence of operations. (0013)
+- Test an inbound adapter end to end in `app/tests/`, through the real binary: every tool, the authentication refusal and every arm of each `Error` `match`. (0013)
+- Run tests with `cargo test`; add no other runner. (0013)
+
+## Commits and pull requests
 
 - Write Conventional Commits; the scope is the crate's name when a change stays in one crate. (0005)
 - Before every commit, run `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test`. (AGENTS.md)
+- Change `main` only through a pull request that passes CI: fmt, clippy, tests, `cargo deny check` and `committed`. (0013)
+- Merge pull requests by rebase; never put a merge commit in one. (0013)
+- Add a dependency only under a licence `deny.toml` allows, and ignore an advisory only with its id and a reason. (0013)
 - Close a decision ticket only once its record is committed. (0001)

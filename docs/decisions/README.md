@@ -19,6 +19,7 @@ record updates in the same pull request.
 | [0010](0010-application-handle.md) | Application handle | Accepted |
 | [0011](0011-configuration.md) | Configuration | Accepted |
 | [0012](0012-observability.md) | Observability | Accepted |
+| [0013](0013-testing-and-ci.md) | Testing and CI | Accepted |
 
 ## Template
 

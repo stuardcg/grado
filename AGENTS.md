@@ -25,4 +25,5 @@ connects to this backend over MCP. The backend is a Rust workspace.
 - A change that accepts or supersedes a decision updates `docs/rules.md` in the same pull request.
 - Commits follow Conventional Commits (ADR 0005).
 - Before every commit: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
-  `cargo test`.
+  `cargo test`. CI also runs `cargo deny check` and `committed` (ADR 0013).
+- Every change goes to `main` through a pull request that passes CI.
