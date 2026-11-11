@@ -4,11 +4,14 @@ Every rule in force, one line each, for building and reviewing. Read the section
 
 ## Crates
 
+- Put each crate in `crates/<name>/`, with the package named `<name>`. (0004)
+- Serve each transport from its own deployable, a composition-root crate named `<transport>-server`; name a deployable that isn't a server after what it does. (0014)
+- Put each frontend in `web/<name>/`, with its own package manager; add its CI job and Dependabot entry in the same pull request. (0014)
 - Depend only as ADR 0004's crate table allows; add a dependency in the change that first uses it. (0004 #1, #2)
 - Never make one adapter crate depend on another. (0004 #3)
 - Use `tokio` in `application` only as a dev-dependency, to run tests. (0009)
 - Keep `serde` out of `domain`: domain types never cross the wire. (0004 #4)
-- Put a change where ADR 0004's "Where a change goes" table says; if no row fits, write a decision record first. (0004)
+- Put a change where ADR 0004's "Where a change goes" table says, as ADR 0014 amends it; if no row fits, write a decision record first. (0004, 0014)
 
 ## Domain
 
@@ -53,20 +56,20 @@ Every rule in force, one line each, for building and reviewing. Read the section
 - Authenticate first in each inbound adapter (for MCP, `authenticate_agent_connection`) and pass the `PlayerId` on. (0004 #24)
 - Only implement ports in outbound adapters; branch only on the technology (encoding, errors, retries, pagination). (0004 #16)
 - Keep every numeric or duration literal in an adapter in a named `const`. (0004 #9)
-- Only build adapters, load configuration and start a runtime in `app`: one file per runtime in `app/src/bin/`, configuration in `app/src/config.rs`. (0004 #17, 0011)
-- Choose adapters only in the composition root, `app/src/bin/<runtime>.rs`: build the outbound adapters, build `Grado` from them, and hand it to the inbound adapters. (0010)
-- Serve one router from two thin entry points, a Lambda binary and a plain server; no API Gateway. (0003)
+- Only build adapters, load configuration and start a runtime in a server crate: one file per runtime in `<transport>-server/src/bin/` (`local.rs`, `lambda.rs`), configuration in its `src/config.rs`. (0004 #17, 0011, 0014)
+- Choose adapters only in the composition root, `<transport>-server/src/bin/<runtime>.rs`: build the outbound adapters, build `Grado` from them, and hand it to the inbound adapters. (0010, 0014)
+- Give each server one router and two thin entry points, `lambda.rs` and `local.rs`; no API Gateway. (0003, 0014)
 
 ## Configuration
 
-- Load configuration only in `app/src/config.rs`, once at startup: `grado.toml`, then `GRADO_*` environment variables; never read the environment anywhere else. (0011)
+- Load configuration only in a server's `src/config.rs`, once at startup: `grado.toml`, then `GRADO_*` environment variables; never read the environment anywhere else. (0011, 0014)
 - Give every setting a field in `Config`, one read in `config.rs` and an entry in `grado.example.toml`; never a default in code. (0011)
 - Refuse to start on a missing, invalid or unknown setting, listing every problem and never a value. (0011)
 - Hand each adapter only its part of `Config`. (0011)
 
 ## Logging
 
-- Log only in adapters and `app`, with `tracing`; never in `domain` or `application`. (0012)
+- Log only in adapters and server crates, with `tracing`; never in `domain` or `application`. (0012, 0014)
 - Log an unexpected failure once, in the inbound adapter where it's mapped to the transport's error, with its cause; outbound adapters return failures without logging them. (0012)
 - Give `PortError` the failure's cause; never drop it with `|_|`. (0012)
 - Open each inbound adapter's span in one place, never in each binding: the request id, the call's name and, once known, the player id. (0012)
@@ -81,8 +84,13 @@ Every rule in force, one line each, for building and reviewing. Read the section
 ## Testing
 
 - Test `shared` and `domain` in the module; use `proptest` for an invariant that must hold over any sequence of operations. (0013)
-- Test an inbound adapter end to end in `app/tests/`, through the real binary: every tool, the authentication refusal and every arm of each `Error` `match`. (0013)
+- Test an inbound adapter end to end in its server's `tests/` (`mcp-server/tests/`), through the real binary: every tool, the authentication refusal and every arm of each `Error` `match`. (0013, 0014)
 - Run tests with `cargo test`; add no other runner. (0013)
+
+## Exceptions and debt
+
+- Never break a rule; change it first with a decision record. (0015)
+- Mark temporary code with a comment naming the ticket that replaces it (`until STU-27 …`); that ticket's change removes the comment. (0015)
 
 ## Commits and pull requests
 

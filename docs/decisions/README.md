@@ -20,6 +20,8 @@ record updates in the same pull request.
 | [0011](0011-configuration.md) | Configuration | Accepted |
 | [0012](0012-observability.md) | Observability | Accepted |
 | [0013](0013-testing-and-ci.md) | Testing and CI | Accepted |
+| [0014](0014-repository-layout.md) | Repository layout and servers | Accepted |
+| [0015](0015-exceptions-and-debt.md) | Exceptions and debt | Accepted |
 
 ## Template
 

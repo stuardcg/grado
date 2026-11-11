@@ -13,7 +13,9 @@ connects to this backend over MCP. The backend is a Rust workspace.
 
 ## Layout
 
-- `crates/`: one crate per folder, as in ADR 0004.
+- `crates/`: one crate per folder, as in ADR 0004. `mcp-server` is the server agents connect to
+  (ADR 0014); run it with `cargo run -p mcp-server --bin local`.
+- `web/`: frontends, one per folder (ADR 0014). None yet.
 - `docs/`: decisions and domain docs.
 - `content/`: proof-of-concept content, kept until the content format is decided. Don't build on it.
 
