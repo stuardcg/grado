@@ -22,6 +22,7 @@ record updates in the same pull request.
 | [0013](0013-testing-and-ci.md) | Testing and CI | Accepted |
 | [0014](0014-repository-layout.md) | Repository layout and servers | Accepted |
 | [0015](0015-exceptions-and-debt.md) | Exceptions and debt | Accepted |
+| [0016](0016-licence-and-public-repository.md) | Licence and public repository | Accepted |
 
 ## Template
 

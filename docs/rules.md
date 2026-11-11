@@ -100,3 +100,8 @@ Every rule in force, one line each, for building and reviewing. Read the section
 - Merge pull requests by rebase; never put a merge commit in one. (0013)
 - Add a dependency only under a licence `deny.toml` allows, and ignore an advisory only with its id and a reason. (0013)
 - Close a decision ticket only once its record is committed. (0001)
+
+## Licence
+
+- Keep every crate on the workspace licence, PolyForm Noncommercial 1.0.0 (`LICENSE.md`). (0016)
+- Accept no outside contributions; pull requests and issues are open to collaborators only. (0016)
