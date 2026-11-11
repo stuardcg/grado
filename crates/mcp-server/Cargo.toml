@@ -1,5 +1,5 @@
 [package]
-name = "app"
+name = "mcp-server"
 edition.workspace = true
 version.workspace = true
 license.workspace = true

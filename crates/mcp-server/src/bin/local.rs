@@ -1,12 +1,12 @@
-//! Local server, and the composition root for it (ADR 0010): it loads the configuration, starts
-//! logging, chooses the adapters, builds `Grado` from them, and serves the MCP tools. Every
-//! setting is listed in `grado.example.toml` (ADR 0011).
+//! The MCP server run locally, and the composition root for it (ADR 0010): it loads the
+//! configuration, starts logging, chooses the adapters, builds `Grado` from them, and serves the
+//! MCP tools. Every setting is listed in `grado.example.toml` (ADR 0011).
 
 use std::process;
 use std::sync::Arc;
 
-use app::config::Config;
 use application::Grado;
+use mcp_server::config::Config;
 use outbound_memory::sample::sample;
 
 #[tokio::main]
@@ -16,7 +16,7 @@ async fn main() -> std::io::Result<()> {
         eprintln!("{error}");
         process::exit(1);
     });
-    app::log::start(config.log);
+    mcp_server::log::start(config.log);
 
     let sample = sample(config.dev.agent_token, config.dev.stamp).await;
     let grado = Grado::new(

@@ -1,4 +1,4 @@
-//! Runs the agent's path (M5–M9 and M11, with a failed report) against the real `server` binary,
+//! Runs the agent's path (M5–M9 and M11, with a failed report) against the real `local` binary,
 //! through an MCP client, the way an LLM client would.
 
 use std::net::TcpListener;
@@ -17,9 +17,9 @@ const PROJECT: &str = "reading-list";
 const READY_ATTEMPTS: u32 = 100;
 const READY_WAIT: Duration = Duration::from_millis(50);
 
-/// The server binary, run where no `grado.toml` is, with only the environment the test sets.
+/// The local binary, run where no `grado.toml` is, with only the environment the test sets.
 fn server() -> Command {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_server"));
+    let mut command = Command::new(env!("CARGO_BIN_EXE_local"));
     command.current_dir(env!("CARGO_TARGET_TMPDIR")).env_clear();
     command
 }

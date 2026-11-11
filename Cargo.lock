@@ -21,24 +21,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "app"
-version = "0.1.0"
-dependencies = [
- "application",
- "axum",
- "domain",
- "figment",
- "inbound-mcp",
- "outbound-memory",
- "rmcp",
- "serde_json",
- "shared",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "application"
 version = "0.1.0"
 dependencies = [
@@ -812,6 +794,24 @@ name = "matchit"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
+
+[[package]]
+name = "mcp-server"
+version = "0.1.0"
+dependencies = [
+ "application",
+ "axum",
+ "domain",
+ "figment",
+ "inbound-mcp",
+ "outbound-memory",
+ "rmcp",
+ "serde_json",
+ "shared",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
 
 [[package]]
 name = "memchr"
