@@ -1,8 +1,8 @@
-//! The MCP tools, one per use case, written by hand until STU-25 decides how bindings are made
-//! (ADR 0004 rule 15). Each tool authenticates the connection first and runs its use case for the
-//! player it acts for (rule 24). Every caller-facing sentence is written here, in one exhaustive
-//! `match` per use case `Error` (rule 13). Each tool call runs in one span, opened in `call_tool`,
-//! and a port failure is logged once, in `unavailable` (ADR 0012).
+//! The MCP tools, one per use case, written by hand (ADR 0017). `call_tool` authenticates the
+//! connection once, before any tool runs, and each tool runs its use case for the player it acts
+//! for (ADR 0004 rule 24). Every caller-facing sentence is written here, in one exhaustive `match`
+//! per use case `Error` (rule 13). Each tool call runs in one span, opened in `call_tool`, and a
+//! port failure is logged once, in `unavailable` (ADR 0012).
 
 use std::sync::Arc;
 
@@ -151,11 +151,7 @@ impl Tools {
     }
 
     #[tool(description = "The projects the person has started, with their ids. Call this first.")]
-    async fn list_my_projects(&self, Extension(parts): Extension<Parts>) -> Reply {
-        let player = match self.player(&parts).await {
-            Ok(player) => player,
-            Err(reply) => return reply,
-        };
+    async fn list_my_projects(&self, Extension(player): Extension<PlayerId>) -> Reply {
         match self.grado.list_my_projects(list_my_projects::Input { player }).await {
             Ok(output) => json(&ProjectsResponse {
                 projects: output
@@ -177,13 +173,9 @@ impl Tools {
             come from get_criteria once the work is done.")]
     async fn get_briefing(
         &self,
-        Extension(parts): Extension<Parts>,
+        Extension(player): Extension<PlayerId>,
         Parameters(request): Parameters<ProjectRequest>,
     ) -> Reply {
-        let player = match self.player(&parts).await {
-            Ok(player) => player,
-            Err(reply) => return reply,
-        };
         let project = match id(request.project, "project") {
             Ok(project) => project,
             Err(reply) => return reply,
@@ -234,13 +226,9 @@ impl Tools {
             the codebase against each one and call send_report.")]
     async fn get_criteria(
         &self,
-        Extension(parts): Extension<Parts>,
+        Extension(player): Extension<PlayerId>,
         Parameters(request): Parameters<ProjectRequest>,
     ) -> Reply {
-        let player = match self.player(&parts).await {
-            Ok(player) => player,
-            Err(reply) => return reply,
-        };
         let project = match id(request.project, "project") {
             Ok(project) => project,
             Err(reply) => return reply,
@@ -278,13 +266,9 @@ impl Tools {
             passes, include a handoff note.")]
     async fn send_report(
         &self,
-        Extension(parts): Extension<Parts>,
+        Extension(player): Extension<PlayerId>,
         Parameters(request): Parameters<ReportRequest>,
     ) -> Reply {
-        let player = match self.player(&parts).await {
-            Ok(player) => player,
-            Err(reply) => return reply,
-        };
         let (project, step) = match (id(request.project, "project"), id(request.step, "step")) {
             (Ok(project), Ok(step)) => (project, step),
             (Err(reply), _) | (_, Err(reply)) => return reply,
@@ -366,13 +350,9 @@ impl Tools {
     )]
     async fn get_stamp(
         &self,
-        Extension(parts): Extension<Parts>,
+        Extension(player): Extension<PlayerId>,
         Parameters(request): Parameters<StampRequest>,
     ) -> Reply {
-        let player = match self.player(&parts).await {
-            Ok(player) => player,
-            Err(reply) => return reply,
-        };
         let (project, step) = match (id(request.project, "project"), id(request.step, "step")) {
             (Ok(project), Ok(step)) => (project, step),
             (Err(reply), _) | (_, Err(reply)) => return reply,
@@ -397,13 +377,7 @@ impl Tools {
     }
 
     /// The player the request's connection acts for (E8).
-    async fn player(&self, parts: &Parts) -> Result<PlayerId, Reply> {
-        let token = parts
-            .headers
-            .get(AUTHORIZATION)
-            .and_then(|value| value.to_str().ok())
-            .and_then(|value| value.strip_prefix("Bearer "))
-            .and_then(AgentToken::new);
+    async fn player(&self, token: Option<AgentToken>) -> Result<PlayerId, Reply> {
         let Some(token) = token else {
             return Err(no_connection());
         };
@@ -421,21 +395,31 @@ impl Tools {
 #[tool_handler(router = self.tool_router)]
 impl ServerHandler for Tools {
     /// Runs every tool call in one span: its request id, the tool's name and, once
-    /// authenticated, the player.
+    /// authenticated, the player. The connection is authenticated here, once, before any tool
+    /// runs; a tool reads the player it acts for as `Extension<PlayerId>` (ADR 0017).
     async fn call_tool(
         &self,
         request: CallToolRequestParams,
-        context: RequestContext<RoleServer>,
+        mut context: RequestContext<RoleServer>,
     ) -> Result<CallToolResponse, ErrorData> {
-        let request_id = context
-            .extensions
-            .get::<Parts>()
+        let parts = context.extensions.get::<Parts>();
+        let request_id = parts
             .and_then(|parts| parts.headers.get(REQUEST_ID))
             .and_then(|value| value.to_str().ok())
             .unwrap_or_default()
             .to_owned();
+        let token = parts.and_then(token);
         let span = tracing::info_span!("tool_call", request_id, tool = %request.name, player = tracing::field::Empty);
-        self.tool_router.call(ToolCallContext::new(self, request, context)).instrument(span).await
+        async move {
+            let player = match self.player(token).await {
+                Ok(player) => player,
+                Err(reply) => return reply.map(CallToolResponse::from),
+            };
+            context.extensions.insert(player);
+            self.tool_router.call(ToolCallContext::new(self, request, context)).await
+        }
+        .instrument(span)
+        .await
     }
 
     fn get_info(&self) -> ServerConfig {
@@ -443,6 +427,16 @@ impl ServerHandler for Tools {
             .with_server_info(Implementation::new("grado", env!("CARGO_PKG_VERSION")))
             .with_instructions(INSTRUCTIONS)
     }
+}
+
+/// The agent connection's token, from the request's `Authorization: Bearer` header.
+fn token(parts: &Parts) -> Option<AgentToken> {
+    parts
+        .headers
+        .get(AUTHORIZATION)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.strip_prefix("Bearer "))
+        .and_then(AgentToken::new)
 }
 
 /// Reads an id the agent sent; a blank one is refused.
