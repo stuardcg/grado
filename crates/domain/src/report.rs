@@ -36,17 +36,28 @@ pub struct SubmitReport {
     pub handoff_note: Option<HandoffNote>,
 }
 
-/// A report `Progress::submit` accepted. Its verdicts cover exactly the step's criteria, once each.
+/// A report `Progress::submit` accepted, with the answer it got. Its verdicts cover exactly the
+/// step's criteria, once each.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StepReport {
     step: StepId,
     verdicts: Vec<(CriterionId, Verdict)>,
     handoff_note: Option<HandoffNote>,
+    answer: Submitted,
 }
 
 impl StepReport {
-    pub(crate) fn accept(report: SubmitReport) -> Self {
-        Self { step: report.step, verdicts: report.verdicts, handoff_note: report.handoff_note }
+    pub(crate) fn accept(report: SubmitReport, answer: Submitted) -> Self {
+        Self { step: report.step, verdicts: report.verdicts, handoff_note: report.handoff_note, answer }
+    }
+
+    /// Whether `report` repeats this one (E4): the same step, the same verdicts in any order, and
+    /// the same handoff note.
+    pub(crate) fn is_repeated_by(&self, report: &SubmitReport) -> bool {
+        self.step == report.step
+            && self.handoff_note == report.handoff_note
+            && self.verdicts.len() == report.verdicts.len()
+            && self.verdicts.iter().all(|verdict| report.verdicts.contains(verdict))
     }
 
     pub fn step(&self) -> &StepId {
@@ -59,6 +70,11 @@ impl StepReport {
 
     pub fn handoff_note(&self) -> Option<&HandoffNote> {
         self.handoff_note.as_ref()
+    }
+
+    /// The answer `Progress::submit` gave this report.
+    pub fn answer(&self) -> &Submitted {
+        &self.answer
     }
 }
 

@@ -1,6 +1,7 @@
 //! Records an agent's pass or fail per criterion on the open step (M8, M9). A fail is recorded
 //! and leaves the step open; an all-pass report with a handoff note approves the step, and with
-//! the stamp off also completes it and opens the next one (M11).
+//! the stamp off also completes it and opens the next one (M11). A report that repeats the step's
+//! latest one gets the same answer and isn't saved again, even when both arrive at once (E4).
 
 use domain::player::PlayerId;
 use domain::project::{CriterionId, ProjectId, StepId};
@@ -62,21 +63,33 @@ pub async fn run(
         .await
         .map_err(Error::Port)?
         .ok_or_else(|| Error::NotStarted(input.project.clone()))?;
+    if let Some(submitted) = progress.earlier_answer(&input.report) {
+        return Ok(Output { submitted });
+    }
     let (game, project_settings, player_settings) =
         settings_store.load(&input.player, &input.project).await.map_err(Error::Port)?;
     let completion = settings::step_completion(&game, &project_settings, &player_settings);
 
-    let submitted = progress.submit(&project, input.report, completion).map_err(|error| match error {
-        SubmitError::UnknownStep(step) => Error::UnknownStep(step),
-        SubmitError::StepNotOpen { open } => Error::StepNotOpen { open },
-        SubmitError::CriteriaMismatch { expected } => Error::CriteriaMismatch { expected },
-        SubmitError::HandoffNoteMissing => Error::HandoffNoteMissing,
-    })?;
-    progress_store.save(&input.player, &progress, Some(version)).await.map_err(|error| match error {
-        SaveProgressError::Conflict => Error::Conflict,
-        SaveProgressError::Port(error) => Error::Port(error),
-    })?;
-    Ok(Output { submitted })
+    let submitted =
+        progress.submit(&project, input.report.clone(), completion).map_err(|error| match error {
+            SubmitError::UnknownStep(step) => Error::UnknownStep(step),
+            SubmitError::StepNotOpen { open } => Error::StepNotOpen { open },
+            SubmitError::CriteriaMismatch { expected } => Error::CriteriaMismatch { expected },
+            SubmitError::HandoffNoteMissing => Error::HandoffNoteMissing,
+        })?;
+    match progress_store.save(&input.player, &progress, Some(version)).await {
+        Ok(_) => Ok(Output { submitted }),
+        // The save that won may hold this same report, sent twice at once (E4).
+        Err(SaveProgressError::Conflict) => {
+            let (latest, _) = progress_store
+                .load(&input.player, &input.project)
+                .await
+                .map_err(Error::Port)?
+                .ok_or_else(|| Error::NotStarted(input.project.clone()))?;
+            latest.earlier_answer(&input.report).map(|submitted| Output { submitted }).ok_or(Error::Conflict)
+        }
+        Err(SaveProgressError::Port(error)) => Err(Error::Port(error)),
+    }
 }
 
 #[cfg(test)]
@@ -84,7 +97,7 @@ mod tests {
     use async_trait::async_trait;
     use domain::progress::{Progress, StepState};
     use domain::settings::{GameSettings, PlayerSettings};
-    use domain::stamp::StampSetting;
+    use domain::stamp::{StampSetting, StepCompletion};
 
     use super::*;
     use crate::ports::progress::Version;
@@ -115,6 +128,12 @@ mod tests {
         let (progress, _) =
             store.load(&fixtures::player(), fixtures::project().id()).await.expect("load").expect("started");
         progress
+    }
+
+    async fn version(store: &FakeProgress) -> Version {
+        let (_, version) =
+            store.load(&fixtures::player(), fixtures::project().id()).await.expect("load").expect("started");
+        version
     }
 
     #[tokio::test]
@@ -179,6 +198,32 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_repeated_report_gets_the_same_answer_and_isnt_saved_again() {
+        let stamp_off = stamp(fixtures::stamp_off());
+        let failing = fixtures::all_fail(&fixtures::first_step());
+        let failed = failing.verdicts.iter().map(|(criterion, _)| criterion.clone()).collect();
+        let reports = [
+            (
+                fixtures::all_pass(&fixtures::first_step()),
+                Submitted::StepDone { next: Some(fixtures::second_step()) },
+            ),
+            (failing, Submitted::StepStillOpen { failed }),
+        ];
+        for (report, submitted) in reports {
+            let store = started().await;
+            let first = run(&catalog(), &store, &stamp_off, input(report.clone())).await;
+            let recorded = version(&store).await;
+
+            let again = run(&catalog(), &store, &stamp_off, input(report)).await;
+
+            let answer = Ok(Output { submitted });
+            assert_eq!(first, answer);
+            assert_eq!(again, answer);
+            assert_eq!(version(&store).await, recorded, "nothing is saved");
+        }
+    }
+
+    #[tokio::test]
     async fn a_report_on_a_step_that_isnt_open_names_the_open_step() {
         let store = started().await;
         let report = fixtures::all_pass(&fixtures::second_step());
@@ -209,13 +254,16 @@ mod tests {
         assert_eq!(output, Err(Error::NotStarted(fixtures::project().id().clone())));
     }
 
-    /// Lets another connection save right after this one loads.
-    struct Racing(FakeProgress);
+    /// Lets another call save `other` right after each load.
+    struct Racing {
+        store: FakeProgress,
+        other: Progress,
+    }
 
     #[async_trait]
     impl ProgressStore for Racing {
         async fn started(&self, player: &PlayerId) -> Result<Vec<ProjectId>, PortError> {
-            self.0.started(player).await
+            self.store.started(player).await
         }
 
         async fn load(
@@ -223,9 +271,9 @@ mod tests {
             player: &PlayerId,
             project: &ProjectId,
         ) -> Result<Option<(Progress, Version)>, PortError> {
-            let loaded = self.0.load(player, project).await?;
-            if let Some((progress, version)) = &loaded {
-                self.0.save(player, progress, Some(*version)).await.expect("the other connection saves");
+            let loaded = self.store.load(player, project).await?;
+            if let Some((_, version)) = &loaded {
+                self.store.save(player, &self.other, Some(*version)).await.expect("the other call saves");
             }
             Ok(loaded)
         }
@@ -236,18 +284,33 @@ mod tests {
             progress: &Progress,
             loaded: Option<Version>,
         ) -> Result<Version, SaveProgressError> {
-            self.0.save(player, progress, loaded).await
+            self.store.save(player, progress, loaded).await
         }
     }
 
     #[tokio::test]
+    async fn a_repeat_that_lost_a_race_to_the_same_report_gets_the_same_answer() {
+        let report = fixtures::all_pass(&fixtures::first_step());
+        let mut other = fixtures::started();
+        other.submit(&fixtures::project(), report.clone(), StepCompletion::AtApproval).expect("recorded");
+        let store = Racing { store: started().await, other };
+
+        let output = run(&catalog(), &store, &stamp(fixtures::stamp_off()), input(report)).await;
+
+        assert_eq!(
+            output,
+            Ok(Output { submitted: Submitted::StepDone { next: Some(fixtures::second_step()) } })
+        );
+    }
+
+    #[tokio::test]
     async fn a_save_that_lost_a_race_is_refused() {
-        let store = Racing(started().await);
+        let store = Racing { store: started().await, other: fixtures::started() };
         let report = fixtures::all_pass(&fixtures::first_step());
 
         let output = run(&catalog(), &store, &stamp(fixtures::stamp_off()), input(report)).await;
 
         assert_eq!(output, Err(Error::Conflict));
-        assert_eq!(saved(&store.0).await, fixtures::started(), "the other connection's save stands");
+        assert_eq!(saved(&store.store).await, fixtures::started(), "the other connection's save stands");
     }
 }

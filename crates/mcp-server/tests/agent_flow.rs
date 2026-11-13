@@ -151,6 +151,11 @@ async fn an_agent_finishes_a_step_and_the_next_one_opens() {
     assert_eq!(done["next_step"], "finished");
     assert!(done["next_action"].as_str().unwrap().contains("fresh agent"));
 
+    // E4: a retried report gets the same answer.
+    let again =
+        agent.ok("send_report", report("books", &all_pass, Some("Books are saved to books.json."))).await;
+    assert_eq!(again, done);
+
     let briefing = agent.ok("get_briefing", json!({ "project": PROJECT })).await;
     assert_eq!(briefing["current"]["id"], "finished");
     assert_eq!(briefing["handoff_note"], "Books are saved to books.json.");
