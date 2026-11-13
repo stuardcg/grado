@@ -76,7 +76,8 @@ impl Progress {
 
     /// Records a report on the open step. A fail is recorded and leaves the step open; an all-pass
     /// report with a handoff note approves it, and when steps complete at approval also completes
-    /// it and opens the next step. A refused report changes nothing. `completion` comes from
+    /// it and opens the next step. A report that repeats its step's latest one gets the answer that
+    /// one got (E4). A repeat or a refused report changes nothing. `completion` comes from
     /// `settings::step_completion`.
     pub fn submit(
         &mut self,
@@ -84,6 +85,9 @@ impl Progress {
         report: SubmitReport,
         completion: StepCompletion,
     ) -> Result<Submitted, SubmitError> {
+        if let Some(answer) = self.earlier_answer(&report) {
+            return Ok(answer);
+        }
         let index = self.find(&report.step).ok_or_else(|| SubmitError::UnknownStep(report.step.clone()))?;
         if self.steps[index].state != StepState::Open {
             return Err(SubmitError::StepNotOpen { open: self.open_step().cloned() });
@@ -97,23 +101,40 @@ impl Progress {
             return Err(SubmitError::HandoffNoteMissing);
         }
 
-        let report = StepReport::accept(report);
-        let note = report.handoff_note().cloned();
-        self.steps[index].latest_report = Some(report);
-        if !failed.is_empty() {
-            return Ok(Submitted::StepStillOpen { failed });
-        }
-        self.last_handoff_note = note;
-        match completion {
-            StepCompletion::AtStamp => {
-                self.steps[index].state = StepState::Approved;
-                Ok(Submitted::StepApproved)
+        let answer = if failed.is_empty() {
+            self.last_handoff_note = report.handoff_note.clone();
+            match completion {
+                StepCompletion::AtStamp => {
+                    self.steps[index].state = StepState::Approved;
+                    Submitted::StepApproved
+                }
+                StepCompletion::AtApproval => {
+                    self.steps[index].state = StepState::Done;
+                    Submitted::StepDone { next: self.open_after(index) }
+                }
             }
-            StepCompletion::AtApproval => {
-                self.steps[index].state = StepState::Done;
-                Ok(Submitted::StepDone { next: self.open_after(index) })
+        } else {
+            Submitted::StepStillOpen { failed }
+        };
+        self.steps[index].latest_report = Some(StepReport::accept(report, answer.clone()));
+        Ok(answer)
+    }
+
+    /// The answer `submit` already gave `report`, when it repeats its step's latest report and that
+    /// answer still holds (E4). Once the progress has moved on, there's none, and `submit` checks
+    /// the repeat like any other report.
+    pub fn earlier_answer(&self, report: &SubmitReport) -> Option<Submitted> {
+        let index = self.find(&report.step)?;
+        let entry = &self.steps[index];
+        let latest = entry.latest_report.as_ref()?;
+        let holds = match latest.answer() {
+            Submitted::StepStillOpen { .. } => entry.state == StepState::Open,
+            Submitted::StepApproved => entry.state == StepState::Approved,
+            Submitted::StepDone { next } => {
+                entry.state == StepState::Done && self.open_step() == next.as_ref()
             }
-        }
+        };
+        (holds && latest.is_repeated_by(report)).then(|| latest.answer().clone())
     }
 
     /// Whether a stamp may be issued for `step` now. `completion` comes from
@@ -282,6 +303,89 @@ mod tests {
         let outcome = progress.submit(&project, all_pass(Some("Again")), AtApproval);
 
         assert_eq!(outcome, Err(SubmitError::StepNotOpen { open: Some(step_id("plan")) }));
+    }
+
+    #[test]
+    fn a_repeated_fail_gets_the_same_answer_and_changes_nothing() {
+        let project = bike_registration();
+        let mut progress = Progress::start(&project);
+        let failing = report("investigate", &[("reads-rules", Pass), ("lists-fields", Fail)], None);
+        progress.submit(&project, failing.clone(), AtApproval).expect("recorded");
+        let recorded = progress.clone();
+        let answer = Submitted::StepStillOpen { failed: vec![criterion_id("lists-fields")] };
+
+        assert_eq!(progress.earlier_answer(&failing), Some(answer.clone()));
+        assert_eq!(progress.submit(&project, failing, AtApproval), Ok(answer));
+        assert_eq!(progress, recorded);
+    }
+
+    #[test]
+    fn a_repeated_all_pass_gets_the_same_answer_and_changes_nothing() {
+        let project = bike_registration();
+        let answers = [
+            (AtStamp, Submitted::StepApproved),
+            (AtApproval, Submitted::StepDone { next: Some(step_id("plan")) }),
+        ];
+        for (completion, answer) in answers {
+            let mut progress = Progress::start(&project);
+            progress.submit(&project, all_pass(Some("Done")), completion).expect("recorded");
+            let recorded = progress.clone();
+
+            let outcome = progress.submit(&project, all_pass(Some("Done")), completion);
+
+            assert_eq!(outcome, Ok(answer));
+            assert_eq!(progress, recorded);
+        }
+    }
+
+    #[test]
+    fn verdicts_in_another_order_are_the_same_report() {
+        let project = bike_registration();
+        let mut progress = Progress::start(&project);
+        progress.submit(&project, all_pass(Some("Done")), AtStamp).expect("approved");
+        let reordered = report("investigate", &[("lists-fields", Pass), ("reads-rules", Pass)], Some("Done"));
+
+        assert_eq!(progress.earlier_answer(&reordered), Some(Submitted::StepApproved));
+    }
+
+    #[test]
+    fn a_report_that_differs_from_the_latest_is_not_a_repeat() {
+        let project = bike_registration();
+        let mut progress = Progress::start(&project);
+        progress.submit(&project, all_pass(Some("Done")), AtStamp).expect("approved");
+
+        let other_note = all_pass(Some("Again"));
+        let other_verdict =
+            report("investigate", &[("reads-rules", Pass), ("lists-fields", Fail)], Some("Done"));
+        let duplicated = report(
+            "investigate",
+            &[("reads-rules", Pass), ("lists-fields", Pass), ("reads-rules", Pass)],
+            Some("Done"),
+        );
+        let extra = report(
+            "investigate",
+            &[("reads-rules", Pass), ("lists-fields", Pass), ("has-plan", Pass)],
+            Some("Done"),
+        );
+
+        for other in [other_note, other_verdict, duplicated, extra] {
+            assert_eq!(progress.earlier_answer(&other), None);
+        }
+    }
+
+    #[test]
+    fn a_repeat_after_the_project_moved_on_is_checked_like_any_report() {
+        let project = bike_registration();
+        let mut progress = Progress::start(&project);
+        progress.submit(&project, all_pass(Some("Done")), AtApproval).expect("first step done");
+        let last = report("plan", &[("has-plan", Pass), ("plan-reviewed", Pass)], Some("Plan in PLAN.md"));
+        progress.submit(&project, last, AtApproval).expect("last step done");
+
+        assert_eq!(progress.earlier_answer(&all_pass(Some("Done"))), None);
+        assert_eq!(
+            progress.submit(&project, all_pass(Some("Done")), AtApproval),
+            Err(SubmitError::StepNotOpen { open: None })
+        );
     }
 
     #[test]

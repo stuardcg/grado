@@ -68,7 +68,7 @@ reports again.
 | E1 | Report for a step that isn't open, or whose criteria don't match the step's. | Refused; the response names the open step. |
 | E2 | Agent asks for the stamp before approval. | Refused; the response says which criteria haven't passed. |
 | E3 | The same criterion keeps failing. | Hints in the app, then skip (O8). |
-| E4 | The same report arrives twice (client retry). | Recorded once; the second call gets the same answer. |
+| E4 | The same report arrives twice (client retry). | Recorded once; the second call gets the same answer. A report is the same when it matches the step's latest one: the same verdicts, in any order, and the same handoff note. Once the project has moved on, a repeat is checked like a new report. |
 | E5 | Two agent connections act at once. | Both can read. Writes don't conflict silently; the second sees the new state. |
 | E6 | An agent reports passes that aren't true. | Accepted. It's a learning platform; cheating only cheats the player. |
 | E7 | New agent, or lost context partway through a step. | The briefing, the handoff note and the codebase restore context. |
