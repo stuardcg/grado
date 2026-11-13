@@ -53,7 +53,9 @@ Every rule in force, one line each, for building and reviewing. Read the section
 
 - Call use cases from inbound adapters only through `Grado`; never import `application::ports`. (0004 #14, 0010)
 - Expose use cases in one file per inbound crate: `inbound-<transport>/src/bindings.rs`. (0004 #15)
-- Authenticate first in each inbound adapter (for MCP, `authenticate_agent_connection`) and pass the `PlayerId` on. (0004 #24)
+- Write bindings by hand; each owns its names, request and response shapes, and wording. No registry shared by transports. (0017)
+- Authenticate once per request in each inbound crate, before any binding runs, by calling the transport's authentication use case, and hand the bindings the `PlayerId` (for MCP, `authenticate_agent_connection` in `call_tool`). (0004 #24, 0017)
+- Decide who may do what in `domain`, through the use case, never in a binding. (0017)
 - Only implement ports in outbound adapters; branch only on the technology (encoding, errors, retries, pagination). (0004 #16)
 - Keep every numeric or duration literal in an adapter in a named `const`. (0004 #9)
 - Only build adapters, load configuration and start a runtime in a server crate: one file per runtime in `<transport>-server/src/bin/` (`local.rs`, `lambda.rs`), configuration in its `src/config.rs`. (0004 #17, 0011, 0014)
