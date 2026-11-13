@@ -23,6 +23,7 @@ record updates in the same pull request.
 | [0014](0014-repository-layout.md) | Repository layout and servers | Accepted |
 | [0015](0015-exceptions-and-debt.md) | Exceptions and debt | Accepted |
 | [0016](0016-licence-and-public-repository.md) | Licence and public repository | Accepted |
+| [0017](0017-exposing-use-cases.md) | Exposing use cases | Accepted |
 
 ## Template
 
