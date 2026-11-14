@@ -5,13 +5,15 @@ Every rule in force, one line each, for building and reviewing. Read the section
 ## Crates
 
 - Put each crate in `crates/<name>/`, with the package named `<name>`. (0004)
-- Serve each transport from its own deployable, a composition-root crate named `<transport>-server`; name a deployable that isn't a server after what it does. (0014)
-- Put each frontend in `web/<name>/`, with its own package manager; add its CI job and Dependabot entry in the same pull request. (0014)
+- Serve each door from its own deployable, a composition-root crate: `mcp-server` for agents, `http-server` for the game page, `developer-server` for the developer page; name a new door's server after who uses it, and a deployable that isn't a server after what it does. (0014, 0020)
+- Keep identity (accounts, identity links, sessions, agent connections, sign-in) in its own hexagon, `identity-domain` and `identity-application`; neither it nor the game's core depends on the other. (0019)
+- Put each frontend in `web/<name>/`, with its own package manager; add its CI job and Dependabot entry in the same pull request. The game page is `web/game/`, the developer page `web/developer/`. (0014, 0020)
 - Depend only as ADR 0004's crate table allows; add a dependency in the change that first uses it. (0004 #1, #2)
 - Never make one adapter crate depend on another. (0004 #3)
 - Use `tokio` in `application` only as a dev-dependency, to run tests. (0009)
 - Keep `serde` out of `domain`: domain types never cross the wire. (0004 #4)
-- Put a change where ADR 0004's "Where a change goes" table says, as ADR 0014 amends it; if no row fits, write a decision record first. (0004, 0014)
+- Put a change where ADR 0004's "Where a change goes" table says, as ADRs 0014, 0019 and 0020 amend it; if no row fits, write a decision record first. (0004, 0014, 0019, 0020)
+- Apply every rule for `domain` and `application` to `identity-domain` and `identity-application`, at their own paths. (0019)
 
 ## Domain
 
@@ -31,9 +33,9 @@ Every rule in force, one line each, for building and reviewing. Read the section
 - Never call another use case; put shared logic in `domain`. (0004 #7)
 - Load through ports, call the domain, save through ports; never compare or count port or domain values. (0004 #8)
 - Use no numeric or duration literals other than `0` and `1` in `application`. (0004 #9)
-- Take a `PlayerId` in `Input`, never a token or session, unless the use case is authentication. (0004 #24)
+- Take the caller's id in `Input` (`PlayerId` in the game, `AccountId` in identity), never a token or session, unless the use case authenticates or ends a session. (0004 #24, 0019)
 - Keep `application/src/` to `lib.rs`, `ports/`, `use_cases/` and `testkit/`. (0004 #21)
-- Give each use case one method on `Grado`, the application handle in `application/src/lib.rs`, that only forwards to its `run`. (0010)
+- Give each use case one method on its core's handle (`Grado` in `application/src/lib.rs`, `Identity` in `identity-application/src/lib.rs`) that only forwards to its `run`. (0010, 0019)
 
 ## Errors
 
@@ -51,16 +53,34 @@ Every rule in force, one line each, for building and reviewing. Read the section
 
 ## Adapters
 
-- Call use cases from inbound adapters only through `Grado`; never import `application::ports`. (0004 #14, 0010)
-- Expose use cases in one file per inbound crate: `inbound-<transport>/src/bindings.rs`. (0004 #15)
-- Write bindings by hand; each owns its names, request and response shapes, and wording. No registry shared by transports. (0017)
-- Authenticate once per request in each inbound crate, before any binding runs, by calling the transport's authentication use case, and hand the bindings the `PlayerId` (for MCP, `authenticate_agent_connection` in `call_tool`). (0004 #24, 0017)
+- Call use cases from inbound adapters only through `Grado` and `Identity`; never import either core's ports. (0004 #14, 0010, 0019)
+- Expose use cases in one file per inbound crate: `inbound-<name>/src/bindings.rs`. (0004 #15)
+- Write bindings by hand; each owns its names, request and response shapes, and wording. No registry shared by inbound crates. (0017, 0020)
+- Authenticate once per request in each inbound crate, before any binding runs, by calling identity's authentication use case for that door, and hand the bindings the returned `AccountId`, turned into a `PlayerId` with the same value for the game's calls (for MCP, `authenticate_agent_connection` in `call_tool`). (0004 #24, 0017, 0019)
+- Bind developer use cases only in `inbound-developer`; never in `inbound-http` or `inbound-mcp`. (0020)
 - Decide who may do what in `domain`, through the use case, never in a binding. (0017)
 - Only implement ports in outbound adapters; branch only on the technology (encoding, errors, retries, pagination). (0004 #16)
 - Keep every numeric or duration literal in an adapter in a named `const`. (0004 #9)
-- Only build adapters, load configuration and start a runtime in a server crate: one file per runtime in `<transport>-server/src/bin/` (`local.rs`, `lambda.rs`), configuration in its `src/config.rs`. (0004 #17, 0011, 0014)
-- Choose adapters only in the composition root, `<transport>-server/src/bin/<runtime>.rs`: build the outbound adapters, build `Grado` from them, and hand it to the inbound adapters. (0010, 0014)
+- Only build adapters, load configuration and start a runtime in a server crate: one file per runtime in its `src/bin/` (`local.rs`, `lambda.rs`), configuration in its `src/config.rs`. (0004 #17, 0011, 0014)
+- Choose adapters only in the composition root, a server crate's `src/bin/<runtime>.rs`: build the outbound adapters, build `Grado` and `Identity` from them, and hand both to the inbound adapters. (0010, 0014, 0019)
 - Give each server one router and two thin entry points, `lambda.rs` and `local.rs`; no API Gateway. (0003, 0014)
+
+## Identity and access
+
+- Sign people in only through a provider app Grado registered (GitHub, Google); never with a password, an email list or a shortcut. (0018)
+- Key an identity on `(provider, subject)`, never on email; keep the provider's id and a display name, and none of its tokens. (0018)
+- Link a provider only while signed in; refuse an identity another account owns, and refuse unlinking the last one. (0018)
+- Check `state`, PKCE, the nonce and the ID token's issuer, audience and expiry; give each provider its own exact callback; return after sign-in only to a path on the door's own origin. (0018)
+- Keep a session as a 256-bit random value in a `__Host-` cookie (`HttpOnly`, `Secure`, `SameSite=Lax`), store only its SHA-256 hash, and issue a new one at every sign-in. (0018)
+- Record the door that issued each session and refuse it at any other: the game page's lasts 7 days idle and 30 at most, the developer page's 1 day idle and 7 at most. (0018)
+- Write a session's or agent token's "last used" at most once an hour, as a touch with no version check. (0018)
+- Require the door's own exact `Origin` on every request that changes something; change nothing on a GET. (0018)
+- Send a Content-Security-Policy without inline scripts from every page; treat names from providers as untrusted text. (0018)
+- Give an agent token a `grado_` prefix and 256 random bits; show it once, store only its SHA-256 hash, expire it after 90 days without use, and refuse a revoked one at once. (0018)
+- Check a developer use case's caller role on every call, through a game port and a `domain` function; give a player use case only the caller's `PlayerId`. (0018)
+- Grant `developer` only through the bootstrap command's `grant_first_developer`, refused once a developer exists, or on the developer page; never remove the last developer. (0018)
+- Log every developer-page call with the developer, the target player and the use case. (0018)
+- Keep sign-in fakes in test code only; no binary signs in without a provider. (0018)
 
 ## Configuration
 

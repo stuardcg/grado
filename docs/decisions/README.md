@@ -24,6 +24,9 @@ record updates in the same pull request.
 | [0015](0015-exceptions-and-debt.md) | Exceptions and debt | Accepted |
 | [0016](0016-licence-and-public-repository.md) | Licence and public repository | Accepted |
 | [0017](0017-exposing-use-cases.md) | Exposing use cases | Accepted |
+| [0018](0018-sign-in-agent-tokens-and-roles.md) | Sign-in, agent tokens and roles | Accepted |
+| [0019](0019-identity-hexagon.md) | Identity as its own hexagon | Accepted |
+| [0020](0020-developer-page-server.md) | A server for the developer page | Accepted |
 
 ## Template
 

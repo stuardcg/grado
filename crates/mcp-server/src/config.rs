@@ -43,7 +43,7 @@ pub enum LogFormat {
     Pretty,
 }
 
-/// `dev`: the sample data's settings. Dev only; they go away with STU-27 and STU-29.
+/// `dev`: the sample data's settings. Dev only; they go away with STU-27 and STU-85.
 pub struct DevConfig {
     /// `dev.agent_token`: the token of the sample player's agent connection.
     pub agent_token: AgentToken,
