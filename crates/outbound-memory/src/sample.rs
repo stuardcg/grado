@@ -1,6 +1,6 @@
 //! Sample data to run the app on, written in Rust until the content format is decided (STU-27).
 //! One project with two steps, one player who started it, and one agent connection, whose token
-//! the composition root passes in. Dev only: STU-29 replaces the seeded connection.
+//! the composition root passes in. Dev only: STU-85 removes the seeded connection.
 
 use application::AgentToken;
 use application::ports::progress::ProgressStore;

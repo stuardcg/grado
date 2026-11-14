@@ -21,8 +21,8 @@ level = "info,rmcp=warn"
 # GRADO_LOG__FORMAT
 format = "pretty"
 
-# Dev only: the sample data the server runs on until content and sign-in are decided. This section
-# goes away with STU-27 (content) and STU-29 (sign-in).
+# Dev only: the sample data the server runs on until content is decided and sign-in is built. This
+# section goes away with STU-27 (content) and STU-85 (sign-in).
 [dev]
 
 # The token of the sample player's one agent connection: any text that isn't blank. The agent
